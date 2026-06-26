@@ -17,6 +17,9 @@
     "@angular/forms": "^21.2.0",
     "@angular/platform-browser": "^21.2.0",
     "@angular/router": "^21.2.0",
+    "@arcgis/core": "^5.1.3",
+    "@arcgis/map-components": "^5.1.3",
+    "@esri/calcite-components": "^5.1.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
