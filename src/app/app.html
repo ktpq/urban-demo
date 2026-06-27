@@ -1,4 +1,4 @@
-<main class="w-screen h-screen flex flex-col md:flex-row overflow-hidden">
+<!-- <main class="w-screen h-screen flex flex-col md:flex-row overflow-hidden">
     <arcgis-map 
         basemap="topo-vector" 
         center="100.78547918479006,12.920549311286171" 
@@ -7,7 +7,20 @@
         class="flex-1 h-full min-h-[50vh] relative">
     </arcgis-map>
 
-    <!-- <section class="w-full md:w-[350px] h-full bg-white shadow-lg p-4 overflow-y-auto flex-shrink-0 z-10">
+    <section class="w-full md:w-[350px] h-full bg-white shadow-lg p-4 overflow-y-auto flex-shrink-0 z-10">
         helloworld
-    </section> -->
-</main>
+    </section>
+</main> -->
+
+<arcgis-scene
+  item-id="c56dab9e4d1a4b0c9d1ee7f589343516"
+  camera-position="5.1169, 52.07984, 45"
+  camera-tilt="85"
+  camera-heading="340"
+class="h-screen"
+(arcgisViewReadyChange)="onSceneReady($event)"
+>
+  <arcgis-zoom slot="top-left"></arcgis-zoom>
+  <arcgis-navigation-toggle slot="top-left"></arcgis-navigation-toggle>
+  <arcgis-compass slot="top-left"></arcgis-compass>
+</arcgis-scene>
