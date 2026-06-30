@@ -13,10 +13,15 @@
 
     <section class="w-full md:w-[350px] h-full bg-white shadow-lg p-6 overflow-y-auto flex-shrink-0 z-10 flex flex-col gap-4">
         <h2 class="text-xl font-bold text-gray-800">3D Building Editor</h2>
-        <p class="text-sm text-gray-600">กำหนดความสูงที่ต้องการ แล้วคลิกบนแผนที่เพื่อสร้างตึกทรงสี่เหลี่ยม</p>
+        <p class="text-sm text-gray-600">กำหนดความสูงที่ต้องการ แล้วคลิกที่ว่างบนแผนที่เพื่อสร้างตึก</p>
         
-        <div class="flex flex-col gap-2 mt-4">
-            <label class="text-sm font-semibold text-gray-700">ความสูงตึก (เมตร):</label>
+        <div class="p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800 leading-relaxed">
+            <strong>💡 พลังแห่ง 3D Gizmo:</strong> 
+            คลิกที่ตึกที่วางไปแล้ว จะมีกล่องโผล่ขึ้นมาให้คุณ <b>ดึงยืดหด</b> ขนาด, <b>หมุน</b> ซ้ายขวา, หรือ <b>จับลอย</b> ขึ้นฟ้าได้เลย!
+        </div>
+        
+        <div class="flex flex-col gap-2 mt-2">
+            <label class="text-sm font-semibold text-gray-700">ความสูงตึก (เมตร) ตอนสร้าง:</label>
             <input 
                 type="number" 
                 class="border border-gray-300 rounded p-2 focus:border-blue-500 focus:outline-none" 
@@ -26,8 +31,8 @@
         </div>
         
         <div class="mt-4 p-4 bg-gray-100 rounded border border-gray-200">
-            <p class="text-xs text-gray-500 font-mono">รูปทรงปัจจุบัน: สี่เหลี่ยม (Cube)</p>
-            <p class="text-xs text-gray-500 font-mono">ความสูงปัจจุบัน: {{ buildingHeight }} เมตร</p>
+            <p class="text-xs text-gray-500 font-mono">รูปร่างตึก: สี่เหลี่ยม (Cube)</p>
+            <p class="text-xs text-gray-500 font-mono">ความสูงเริ่มต้น: {{ buildingHeight }} เมตร</p>
             <button class="mt-4 text-xs text-red-500 underline cursor-pointer hover:text-red-700" (click)="clearGraphics()">ล้างตึกทั้งหมด (Clear All)</button>
         </div>
     </section>

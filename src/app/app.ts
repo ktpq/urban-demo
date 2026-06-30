@@ -13,10 +13,11 @@ import Graphic from '@arcgis/core/Graphic';
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import PointSymbol3D from '@arcgis/core/symbols/PointSymbol3D';
 import ObjectSymbol3DLayer from '@arcgis/core/symbols/ObjectSymbol3DLayer';
+import SketchViewModel from '@arcgis/core/widgets/Sketch/SketchViewModel';
 
 @Component({
   selector: 'app-root',
-  imports: [], // Removed UpperCasePipe as it's no longer used
+  imports: [], 
   templateUrl: './app.html',
   styleUrl: './app.css',
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
@@ -25,19 +26,18 @@ export class App implements OnInit {
   mapComponent!: ArcgisMap;
   sceneComponent!: ArcgisScene;
 
-  // ตัวแปรเก็บความสูงตึก (เริ่มต้น 50 เมตร)
   buildingHeight: number = 50;
   
   graphicsLayer = new GraphicsLayer();
+  sketchViewModel!: SketchViewModel;
 
   constructor(
     private apiService: ApiService
   ){}
   
-  // ฟังก์ชันอัปเดตความสูงเมื่อพิมพ์ช่อง input
   updateHeight(event: Event) {
     const inputElement = event.target as HTMLInputElement;
-    this.buildingHeight = Number(inputElement.value) || 1; // กันกรณีพิมพ์ตัวหนังสือ
+    this.buildingHeight = Number(inputElement.value) || 1;
   }
 
   clearGraphics() {
@@ -47,26 +47,52 @@ export class App implements OnInit {
   onSceneReady(event: CustomEvent) {
     console.log('Scene is ready', event);
     this.sceneComponent = event.target as ArcgisScene;
+    const view = this.sceneComponent.view;
 
     // Add GraphicsLayer to the scene's map
-    if (this.sceneComponent.map){
-      this.sceneComponent.map.add(this.graphicsLayer);
-    }
+    this.sceneComponent.map.add(this.graphicsLayer);
+
+    // Initialize SketchViewModel for 3D transforming
+    this.sketchViewModel = new SketchViewModel({
+      view: view,
+      layer: this.graphicsLayer,
+      updateOnGraphicClick: true, // Automatically select graphic when clicked
+      defaultUpdateOptions: {
+        tool: "transform" // Enable 3D transform tool (scale, rotate, translate)
+      }
+    });
 
     // Listen to click events on the SceneView
-    this.sceneComponent.view.on("click", (evt) => {
+    view.on("click", async (evt) => {
+      // Check if the user clicked on an existing graphic or the transform gizmo
+      const response = await view.hitTest(evt);
+      
+      // Look for a result that belongs to our graphicsLayer
+      const clickedOurGraphic = response.results.find(r => r.layer === this.graphicsLayer);
+      
+      // If we clicked an existing graphic, let SketchViewModel handle it.
+      if (clickedOurGraphic) {
+        return; 
+      }
+
+      // If SketchViewModel is currently active (e.g. user is editing), 
+      // clicking outside will complete the edit. Don't create a new graphic immediately.
+      if (this.sketchViewModel.state === "active") {
+        return;
+      }
+
       const point = evt.mapPoint;
       if (!point) return;
 
-      // สร้างสัญลักษณ์ 3 มิติ เป็นทรงสี่เหลี่ยมตามความสูงที่ผู้ใช้กำหนด
+      // Create a 3D symbol based on the current height
       const symbol = new PointSymbol3D({
         symbolLayers: [
           new ObjectSymbol3DLayer({
-            width: 20,
-            height: this.buildingHeight,
-            depth: 20,
-            resource: { primitive: "cube" },
-            material: { color: "#3B82F6" }
+            width: 20, 
+            height: this.buildingHeight, 
+            depth: 20, 
+            resource: { primitive: "cube" }, 
+            material: { color: "#3B82F6" } 
           })
         ]
       });
@@ -78,11 +104,12 @@ export class App implements OnInit {
       });
 
       this.graphicsLayer.add(graphic);
-      console.log(`Placed a cube at height ${this.buildingHeight}m`, point);
+      
+      // Automatically select the newly created building for editing
+      this.sketchViewModel.update(graphic, { tool: "transform" });
     });
   }
 
   ngOnInit() {
-    // Initialization code if needed
   }
 }
