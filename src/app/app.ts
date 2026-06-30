@@ -1,5 +1,6 @@
 import '@arcgis/map-components/components/arcgis-map';
 import "@arcgis/map-components/components/arcgis-scene";
+import "@arcgis/map-components/components/arcgis-sketch";
 
 import { Component, signal, CUSTOM_ELEMENTS_SCHEMA, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
@@ -39,9 +40,13 @@ export class App implements OnInit {
     console.log('Scene is ready', event);
     this.sceneComponent = event.target as ArcgisScene;
 
-    this.sceneComponent.view.on("click", (event) => {
-      console.log(event);
-    })
+    // this.sceneComponent.view.on("click", (event) => {
+    //   console.log(event);
+    // })
+  }
+
+  sketchEvent(event: CustomEvent) {
+    console.log("Sketch event", event);
   }
 
   ngOnInit() {
