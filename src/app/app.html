@@ -12,46 +12,23 @@
     </arcgis-scene>
 
     <section class="w-full md:w-[350px] h-full bg-white shadow-lg p-6 overflow-y-auto flex-shrink-0 z-10 flex flex-col gap-4">
-        <h2 class="text-xl font-bold text-gray-800">3D Object Editor</h2>
-        <p class="text-sm text-gray-600">Select a shape below, then click anywhere on the map to place the 3D object.</p>
+        <h2 class="text-xl font-bold text-gray-800">3D Building Editor</h2>
+        <p class="text-sm text-gray-600">กำหนดความสูงที่ต้องการ แล้วคลิกบนแผนที่เพื่อสร้างตึกทรงสี่เหลี่ยม</p>
         
         <div class="flex flex-col gap-2 mt-4">
-            <h3 class="text-sm font-semibold text-gray-700">Choose Shape:</h3>
-            <div class="grid grid-cols-2 gap-2">
-                <button 
-                    class="py-2 px-4 rounded text-white font-medium transition-colors cursor-pointer"
-                    [class.bg-blue-600]="selectedShape === 'cube'"
-                    [class.bg-gray-400]="selectedShape !== 'cube'"
-                    (click)="setShape('cube')">
-                    Cube
-                </button>
-                <button 
-                    class="py-2 px-4 rounded text-white font-medium transition-colors cursor-pointer"
-                    [class.bg-blue-600]="selectedShape === 'cylinder'"
-                    [class.bg-gray-400]="selectedShape !== 'cylinder'"
-                    (click)="setShape('cylinder')">
-                    Cylinder
-                </button>
-                <button 
-                    class="py-2 px-4 rounded text-white font-medium transition-colors cursor-pointer"
-                    [class.bg-blue-600]="selectedShape === 'cone'"
-                    [class.bg-gray-400]="selectedShape !== 'cone'"
-                    (click)="setShape('cone')">
-                    Cone
-                </button>
-                <button 
-                    class="py-2 px-4 rounded text-white font-medium transition-colors cursor-pointer"
-                    [class.bg-blue-600]="selectedShape === 'sphere'"
-                    [class.bg-gray-400]="selectedShape !== 'sphere'"
-                    (click)="setShape('sphere')">
-                    Sphere
-                </button>
-            </div>
+            <label class="text-sm font-semibold text-gray-700">ความสูงตึก (เมตร):</label>
+            <input 
+                type="number" 
+                class="border border-gray-300 rounded p-2 focus:border-blue-500 focus:outline-none" 
+                [value]="buildingHeight" 
+                (input)="updateHeight($event)"
+                min="1" max="1000" />
         </div>
         
         <div class="mt-4 p-4 bg-gray-100 rounded border border-gray-200">
-            <p class="text-xs text-gray-500 font-mono">Current mode: {{ selectedShape | uppercase }}</p>
-            <button class="mt-2 text-xs text-red-500 underline cursor-pointer" (click)="clearGraphics()">Clear All Objects</button>
+            <p class="text-xs text-gray-500 font-mono">รูปทรงปัจจุบัน: สี่เหลี่ยม (Cube)</p>
+            <p class="text-xs text-gray-500 font-mono">ความสูงปัจจุบัน: {{ buildingHeight }} เมตร</p>
+            <button class="mt-4 text-xs text-red-500 underline cursor-pointer hover:text-red-700" (click)="clearGraphics()">ล้างตึกทั้งหมด (Clear All)</button>
         </div>
     </section>
 </main>

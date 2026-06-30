@@ -3,7 +3,6 @@ import "@arcgis/map-components/components/arcgis-scene";
 import "@arcgis/map-components/components/arcgis-sketch";
 
 import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit } from '@angular/core';
-import { UpperCasePipe } from '@angular/common';
 
 import { ApiService } from './services/api-service';
 
@@ -17,7 +16,7 @@ import ObjectSymbol3DLayer from '@arcgis/core/symbols/ObjectSymbol3DLayer';
 
 @Component({
   selector: 'app-root',
-  imports: [UpperCasePipe],
+  imports: [], // Removed UpperCasePipe as it's no longer used
   templateUrl: './app.html',
   styleUrl: './app.css',
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
@@ -26,15 +25,19 @@ export class App implements OnInit {
   mapComponent!: ArcgisMap;
   sceneComponent!: ArcgisScene;
 
-  selectedShape: string = 'cube';
+  // ตัวแปรเก็บความสูงตึก (เริ่มต้น 50 เมตร)
+  buildingHeight: number = 50;
+  
   graphicsLayer = new GraphicsLayer();
 
   constructor(
     private apiService: ApiService
   ){}
   
-  setShape(shape: string) {
-    this.selectedShape = shape;
+  // ฟังก์ชันอัปเดตความสูงเมื่อพิมพ์ช่อง input
+  updateHeight(event: Event) {
+    const inputElement = event.target as HTMLInputElement;
+    this.buildingHeight = Number(inputElement.value) || 1; // กันกรณีพิมพ์ตัวหนังสือ
   }
 
   clearGraphics() {
@@ -53,15 +56,15 @@ export class App implements OnInit {
       const point = evt.mapPoint;
       if (!point) return;
 
-      // Create a 3D symbol based on the selected primitive shape
+      // สร้างสัญลักษณ์ 3 มิติ เป็นทรงสี่เหลี่ยมตามความสูงที่ผู้ใช้กำหนด
       const symbol = new PointSymbol3D({
         symbolLayers: [
           new ObjectSymbol3DLayer({
-            width: 20, // 20 meters wide
-            height: 50, // 50 meters tall
-            depth: 20, // 20 meters deep
-            resource: { primitive: this.selectedShape as any },
-            material: { color: "#3B82F6" } // Blue color
+            width: 20, // กว้าง 20 เมตร
+            height: this.buildingHeight, // สูงตามตัวแปร
+            depth: 20, // ลึก 20 เมตร
+            resource: { primitive: "cube" }, // บังคับเป็นสี่เหลี่ยมเสมอ
+            material: { color: "#3B82F6" } // สีฟ้า Tailwind
           })
         ]
       });
@@ -73,7 +76,7 @@ export class App implements OnInit {
       });
 
       this.graphicsLayer.add(graphic);
-      console.log(`Placed a ${this.selectedShape} at`, point);
+      console.log(`Placed a cube at height ${this.buildingHeight}m`, point);
     });
   }
 
