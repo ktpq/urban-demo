@@ -1,32 +1,57 @@
 <main class="w-screen h-screen flex flex-col md:flex-row overflow-hidden">
-    <arcgis-map 
-        basemap="topo-vector" 
-        center="100.78547918479006,12.920549311286171" 
-        zoom="20" 
-        (arcgisViewReadyChange)="arcgisViewReadyChange($event)" 
+    <arcgis-scene
+        basemap="topo-vector"
+        camera-position="100.78547918479006, 12.918, 500"
+        camera-tilt="60"
+        camera-heading="0"
+        (arcgisViewReadyChange)="onSceneReady($event)"
         class="flex-1 h-full min-h-[50vh] relative">
-         <arcgis-sketch
-            slot="bottom-right"
-            view="Map"
-            creation-mode="continuous"
-            layout="horizontal"
-        (arcgisViewReadyChange)="sketchEvent($event)"></arcgis-sketch>
-    </arcgis-map>
+        <arcgis-zoom slot="top-left"></arcgis-zoom>
+        <arcgis-navigation-toggle slot="top-left"></arcgis-navigation-toggle>
+        <arcgis-compass slot="top-left"></arcgis-compass>
+    </arcgis-scene>
 
-    <section class="w-full md:w-[350px] h-full bg-white shadow-lg p-4 overflow-y-auto flex-shrink-0 z-10">
+    <section class="w-full md:w-[350px] h-full bg-white shadow-lg p-6 overflow-y-auto flex-shrink-0 z-10 flex flex-col gap-4">
+        <h2 class="text-xl font-bold text-gray-800">3D Object Editor</h2>
+        <p class="text-sm text-gray-600">Select a shape below, then click anywhere on the map to place the 3D object.</p>
         
+        <div class="flex flex-col gap-2 mt-4">
+            <h3 class="text-sm font-semibold text-gray-700">Choose Shape:</h3>
+            <div class="grid grid-cols-2 gap-2">
+                <button 
+                    class="py-2 px-4 rounded text-white font-medium transition-colors cursor-pointer"
+                    [class.bg-blue-600]="selectedShape === 'cube'"
+                    [class.bg-gray-400]="selectedShape !== 'cube'"
+                    (click)="setShape('cube')">
+                    Cube
+                </button>
+                <button 
+                    class="py-2 px-4 rounded text-white font-medium transition-colors cursor-pointer"
+                    [class.bg-blue-600]="selectedShape === 'cylinder'"
+                    [class.bg-gray-400]="selectedShape !== 'cylinder'"
+                    (click)="setShape('cylinder')">
+                    Cylinder
+                </button>
+                <button 
+                    class="py-2 px-4 rounded text-white font-medium transition-colors cursor-pointer"
+                    [class.bg-blue-600]="selectedShape === 'cone'"
+                    [class.bg-gray-400]="selectedShape !== 'cone'"
+                    (click)="setShape('cone')">
+                    Cone
+                </button>
+                <button 
+                    class="py-2 px-4 rounded text-white font-medium transition-colors cursor-pointer"
+                    [class.bg-blue-600]="selectedShape === 'sphere'"
+                    [class.bg-gray-400]="selectedShape !== 'sphere'"
+                    (click)="setShape('sphere')">
+                    Sphere
+                </button>
+            </div>
+        </div>
+        
+        <div class="mt-4 p-4 bg-gray-100 rounded border border-gray-200">
+            <p class="text-xs text-gray-500 font-mono">Current mode: {{ selectedShape | uppercase }}</p>
+            <button class="mt-2 text-xs text-red-500 underline cursor-pointer" (click)="clearGraphics()">Clear All Objects</button>
+        </div>
     </section>
 </main>
-
-<!-- <arcgis-scene
-  item-id="c56dab9e4d1a4b0c9d1ee7f589343516"
-  camera-position="5.1169, 52.07984, 45"
-  camera-tilt="85"
-  camera-heading="340"
-class="h-screen"
-(arcgisViewReadyChange)="onSceneReady($event)"
->
-  <arcgis-zoom slot="top-left"></arcgis-zoom>
-  <arcgis-navigation-toggle slot="top-left"></arcgis-navigation-toggle>
-  <arcgis-compass slot="top-left"></arcgis-compass>
-</arcgis-scene> -->
