@@ -5,7 +5,7 @@
         camera-tilt="60"
         camera-heading="0"
         (arcgisViewReadyChange)="onSceneReady($event)"
-        class="flex-1 h-full min-h-[50vh] relative">
+        class="block w-full flex-1 h-full min-h-[50vh] relative">
         <arcgis-zoom slot="top-left"></arcgis-zoom>
         <arcgis-navigation-toggle slot="top-left"></arcgis-navigation-toggle>
         <arcgis-compass slot="top-left"></arcgis-compass>
@@ -13,15 +13,10 @@
 
     <section class="w-full md:w-[350px] h-full bg-white shadow-lg p-6 overflow-y-auto flex-shrink-0 z-10 flex flex-col gap-4">
         <h2 class="text-xl font-bold text-gray-800">3D Building Editor</h2>
-        <p class="text-sm text-gray-600">กำหนดความสูงที่ต้องการ แล้วคลิกที่ว่างบนแผนที่เพื่อสร้างตึก</p>
-        
-        <div class="p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800 leading-relaxed">
-            <strong>💡 พลังแห่ง 3D Gizmo:</strong> 
-            คลิกที่ตึกที่วางไปแล้ว จะมีกล่องโผล่ขึ้นมาให้คุณ <b>ดึงยืดหด</b> ขนาด, <b>หมุน</b> ซ้ายขวา, หรือ <b>จับลอย</b> ขึ้นฟ้าได้เลย!
-        </div>
+        <p class="text-sm text-gray-600 leading-relaxed">กำหนดความสูงที่ต้องการ กดปุ่มวาดตึก แล้ว <b>"คลิกลาก"</b> บนแผนที่เพื่อกางขนาดฐานตึก</p>
         
         <div class="flex flex-col gap-2 mt-2">
-            <label class="text-sm font-semibold text-gray-700">ความสูงตึก (เมตร) ตอนสร้าง:</label>
+            <label class="text-sm font-semibold text-gray-700">ความสูงตึก (เมตร):</label>
             <input 
                 type="number" 
                 class="border border-gray-300 rounded p-2 focus:border-blue-500 focus:outline-none" 
@@ -29,11 +24,21 @@
                 (input)="updateHeight($event)"
                 min="1" max="1000" />
         </div>
+
+        <button 
+            class="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded shadow transition-colors cursor-pointer"
+            (click)="startDrawing()">
+            ➕ วาดตึกสี่เหลี่ยม (Draw Rectangle)
+        </button>
         
+        <div class="p-3 mt-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800 leading-relaxed">
+            <strong>💡 แก้ไขทีละมุม (Reshape):</strong> 
+            คลิกที่ตึกที่เคยวาดไปแล้ว จะมีจุด (Handle) โผล่ที่มุม ให้คุณสามารถจับดึงเพื่อเบี้ยวรูปทรงตึกได้อิสระ!
+        </div>
+
         <div class="mt-4 p-4 bg-gray-100 rounded border border-gray-200">
-            <p class="text-xs text-gray-500 font-mono">รูปร่างตึก: สี่เหลี่ยม (Cube)</p>
-            <p class="text-xs text-gray-500 font-mono">ความสูงเริ่มต้น: {{ buildingHeight }} เมตร</p>
-            <button class="mt-4 text-xs text-red-500 underline cursor-pointer hover:text-red-700" (click)="clearGraphics()">ล้างตึกทั้งหมด (Clear All)</button>
+            <p class="text-xs text-gray-500 font-mono mb-2"><b>สถานะล่าสุด:</b> ดูพิกัด Rings สำหรับ Urban API ได้ที่ <code>console.log</code></p>
+            <button class="w-full mt-2 text-xs text-red-500 underline cursor-pointer hover:text-red-700 text-left" (click)="clearGraphics()">ล้างตึกทั้งหมด (Clear All)</button>
         </div>
     </section>
 </main>

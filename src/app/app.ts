@@ -9,10 +9,9 @@ import { ApiService } from './services/api-service';
 import { ArcgisMap } from '@arcgis/map-components/components/arcgis-map';
 import { ArcgisScene } from '@arcgis/map-components/components/arcgis-scene';
 
-import Graphic from '@arcgis/core/Graphic';
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
-import PointSymbol3D from '@arcgis/core/symbols/PointSymbol3D';
-import ObjectSymbol3DLayer from '@arcgis/core/symbols/ObjectSymbol3DLayer';
+import PolygonSymbol3D from '@arcgis/core/symbols/PolygonSymbol3D';
+import ExtrudeSymbol3DLayer from '@arcgis/core/symbols/ExtrudeSymbol3DLayer';
 import SketchViewModel from '@arcgis/core/widgets/Sketch/SketchViewModel';
 
 @Component({
@@ -28,7 +27,11 @@ export class App implements OnInit {
 
   buildingHeight: number = 50;
   
-  graphicsLayer = new GraphicsLayer();
+  graphicsLayer = new GraphicsLayer({
+    elevationInfo: {
+      mode: "on-the-ground"
+    }
+  });
   sketchViewModel!: SketchViewModel;
 
   constructor(
@@ -38,6 +41,27 @@ export class App implements OnInit {
   updateHeight(event: Event) {
     const inputElement = event.target as HTMLInputElement;
     this.buildingHeight = Number(inputElement.value) || 1;
+    this.updateSketchSymbol();
+  }
+
+  // อัปเดตสัญลักษณ์เวลาเปลี่ยนความสูง
+  updateSketchSymbol() {
+    if (!this.sketchViewModel) return;
+    
+    this.sketchViewModel.polygonSymbol = new PolygonSymbol3D({
+      symbolLayers: [
+        new ExtrudeSymbol3DLayer({
+          size: this.buildingHeight, // ความสูง
+          material: { color: "#ffffff" } 
+        })
+      ]
+    });
+  }
+
+  startDrawing() {
+    this.updateSketchSymbol();
+    // สั่งให้เริ่มวาดสี่เหลี่ยม
+    this.sketchViewModel.create("rectangle");
   }
 
   clearGraphics() {
@@ -49,64 +73,39 @@ export class App implements OnInit {
     this.sceneComponent = event.target as ArcgisScene;
     const view = this.sceneComponent.view;
 
-    // Add GraphicsLayer to the scene's map
-    this.sceneComponent.map.add(this.graphicsLayer);
+    if (this.sceneComponent.map){
+      this.sceneComponent.map.add(this.graphicsLayer);
+    }
 
-    // Initialize SketchViewModel for 3D transforming
     this.sketchViewModel = new SketchViewModel({
       view: view,
       layer: this.graphicsLayer,
-      updateOnGraphicClick: true, // Automatically select graphic when clicked
+      updateOnGraphicClick: true,
       defaultUpdateOptions: {
-        tool: "transform" // Enable 3D transform tool (scale, rotate, translate)
+        tool: "reshape" // ใช้โหมด reshape เพื่อให้ดึงแก้พิกัดทีละมุมได้
       }
     });
 
-    // Listen to click events on the SceneView
-    view.on("click", async (evt) => {
-      // Check if the user clicked on an existing graphic or the transform gizmo
-      const response = await view.hitTest(evt);
-      
-      // Look for a result that belongs to our graphicsLayer
-      const clickedOurGraphic = response.results.find(r => r.layer === this.graphicsLayer);
-      
-      // If we clicked an existing graphic, let SketchViewModel handle it.
-      if (clickedOurGraphic) {
-        return; 
+    this.updateSketchSymbol();
+
+    // ดักจับ Event เมื่อวาดเสร็จ หรือแก้ไขเสร็จ
+    this.sketchViewModel.on("create", (event) => {
+      if (event.state === "complete") {
+        let polygon: any;
+        if (event.graphic){
+          polygon = event.graphic.geometry as any;
+        }
+        console.log("=== สกัดพิกัด (Rings) เมื่อสร้างเสร็จ ===");
+        console.log(JSON.stringify(polygon.rings, null, 2));
       }
+    });
 
-      // If SketchViewModel is currently active (e.g. user is editing), 
-      // clicking outside will complete the edit. Don't create a new graphic immediately.
-      if (this.sketchViewModel.state === "active") {
-        return;
+    this.sketchViewModel.on("update", (event) => {
+      if (event.state === "complete" && event.graphics.length > 0) {
+        const polygon = event.graphics[0].geometry as any;
+        console.log("=== สกัดพิกัด (Rings) เมื่อแก้ไขเสร็จ ===");
+        console.log(JSON.stringify(polygon.rings, null, 2));
       }
-
-      const point = evt.mapPoint;
-      if (!point) return;
-
-      // Create a 3D symbol based on the current height
-      const symbol = new PointSymbol3D({
-        symbolLayers: [
-          new ObjectSymbol3DLayer({
-            width: 20, 
-            height: this.buildingHeight, 
-            depth: 20, 
-            resource: { primitive: "cube" }, 
-            material: { color: "#3B82F6" } 
-          })
-        ]
-      });
-
-      // Create the graphic and add it to the layer
-      const graphic = new Graphic({
-        geometry: point,
-        symbol: symbol
-      });
-
-      this.graphicsLayer.add(graphic);
-      
-      // Automatically select the newly created building for editing
-      this.sketchViewModel.update(graphic, { tool: "transform" });
     });
   }
 
