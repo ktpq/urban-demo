@@ -49,7 +49,9 @@ export class App implements OnInit {
     this.sceneComponent = event.target as ArcgisScene;
 
     // Add GraphicsLayer to the scene's map
-    this.sceneComponent.map.add(this.graphicsLayer);
+    if (this.sceneComponent.map){
+      this.sceneComponent.map.add(this.graphicsLayer);
+    }
 
     // Listen to click events on the SceneView
     this.sceneComponent.view.on("click", (evt) => {
@@ -60,11 +62,11 @@ export class App implements OnInit {
       const symbol = new PointSymbol3D({
         symbolLayers: [
           new ObjectSymbol3DLayer({
-            width: 20, // กว้าง 20 เมตร
-            height: this.buildingHeight, // สูงตามตัวแปร
-            depth: 20, // ลึก 20 เมตร
-            resource: { primitive: "cube" }, // บังคับเป็นสี่เหลี่ยมเสมอ
-            material: { color: "#3B82F6" } // สีฟ้า Tailwind
+            width: 20,
+            height: this.buildingHeight,
+            depth: 20,
+            resource: { primitive: "cube" },
+            material: { color: "#3B82F6" }
           })
         ]
       });
