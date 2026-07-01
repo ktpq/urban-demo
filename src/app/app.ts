@@ -115,6 +115,30 @@ export class App implements OnInit {
     this.updateSketchSymbol();
   }
 
+  // TODO: ในอนาคตจะยิง API เพื่อเช็ค regulation หลังแก้ไขตึก
+  confirmEdit() {
+    console.log("=== ยืนยันการแก้ไขตึก ===");
+    console.log("ความสูงใหม่:", this.buildingHeight, "เมตร");
+
+    if (this.activeGraphic) {
+      const polygon = this.activeGraphic.geometry as any;
+      console.log("พิกัด (Rings):", JSON.stringify(polygon.rings, null, 2));
+    }
+
+    // TODO: เรียก API เช็ค regulation ตรงนี้
+
+    // reset สถานะกลับคืน
+    this.isBoxSelected = false;
+    this.activeGraphic = null;
+    this.buildingHeight = this.DEFAULT_HEIGHT;
+    this.updateSketchSymbol();
+    
+    // สั่งให้ SketchViewModel ยกเลิกโหมดแก้ไข
+    if (this.sketchViewModel) {
+      this.sketchViewModel.complete();
+    }
+  }
+
   onSceneReady(event: CustomEvent) {
     console.log('Scene is ready', event);
     this.sceneComponent = event.target as ArcgisScene;
@@ -156,7 +180,10 @@ export class App implements OnInit {
       // เมื่อคลิกเลือกตึก (ดึงค่าความสูงมาแสดงแค่ตอน start เท่านั้น)
       if (event.state === "start") {
         if (event.graphics.length > 0) {
-          this.isBoxSelected = true;
+          // ถ้ากำลังอยู่ในโหมดสร้างตึกใหม่อยู่ ไม่ต้องเปิดโหมดแก้ไขซ้อน
+          if (!this.isDrawingComplete) {
+            this.isBoxSelected = true;
+          }
           this.activeGraphic = event.graphics[0];
 
           // ดึงค่าความสูงจาก symbol มาใส่ช่อง Input

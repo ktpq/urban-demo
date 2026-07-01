@@ -31,7 +31,13 @@
             ✅ ยืนยันการสร้าง (Confirm Building)
         </button>
 
-        <button *ngIf="!isDrawingComplete"
+        <button *ngIf="isBoxSelected"
+            class="mt-2 w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded shadow transition-colors cursor-pointer"
+            (click)="confirmEdit()">
+            ✏️ ยืนยันการแก้ไข (Confirm Edit)
+        </button>
+
+        <button *ngIf="!isDrawingComplete && !isBoxSelected"
             class="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded shadow transition-colors cursor-pointer"
             (click)="startDrawing()">
             ➕ วาดตึกสี่เหลี่ยม (Draw Rectangle)
