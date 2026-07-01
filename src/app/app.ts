@@ -333,6 +333,32 @@ export class App implements OnInit {
     console.log("Draw zoning polygon success!");
   }
 
+  renderExistingBuilding(geometry: any, height: number) {
+    if (!geometry || !geometry.rings) return;
+
+    const polygon = new Polygon({
+      rings: geometry.rings,
+      spatialReference: { wkid: 3857 } // อ้างอิงจากโซน หรือใช้ของแผนที่
+    });
+
+    const polygonSymbol = new PolygonSymbol3D({
+      symbolLayers: [
+        new ExtrudeSymbol3DLayer({
+          size: height,
+          material: { color: "#ffffff" }
+        })
+      ]
+    });
+
+    const graphic = new Graphic({
+      geometry: polygon,
+      symbol: polygonSymbol
+    });
+
+    // สำคัญ: เอาไปแปะใน graphicsLayer ที่ SketchViewModel จับตาดูอยู่
+    this.graphicsLayer.add(graphic);
+  }
+
   ngOnInit() {
     // ผู้เรียกใช้งานเป็นคนประกอบ Query ส่งไปเอง
     const myQuery = `
@@ -386,17 +412,35 @@ export class App implements OnInit {
 
         // ดึง rings มาวาดเป็น Polygon
         try {
-          const zones = response?.data?.urbanDesignDatabase?.plans?.[0]?.branches?.[0]?.zones;
-          if (zones && zones.length > 0) {
-            zones.forEach((zone: any) => {
-              this.zonesData.push(zone); // เก็บ zone ลง array
-              this.drawZoningPolygon(zone.geometry);
-            });
-            console.log("=== All Zones Data ===");
-            console.log(this.zonesData);
+          const branch = response?.data?.urbanDesignDatabase?.plans?.[0]?.branches?.[0];
+          
+          if (branch) {
+            const zones = branch.zones;
+            if (zones && zones.length > 0) {
+              zones.forEach((zone: any) => {
+                this.zonesData.push(zone); // เก็บ zone ลง array
+                this.drawZoningPolygon(zone.geometry);
+              });
+              console.log("=== All Zones Data ===");
+              console.log(this.zonesData);
+            }
+
+            const parcels = branch.parcels;
+            if (parcels && parcels.length > 0) {
+              parcels.forEach((parcel: any) => {
+                const spaces = parcel.spaces;
+                if (spaces && spaces.length > 0) {
+                  spaces.forEach((space: any) => {
+                    // สร้างตึกเดิม (สมมติความสูง 30 เพราะใน JSON ไม่มี height มาให้)
+                    this.renderExistingBuilding(space.geometry, space.attributes?.FloorHeight);
+                  });
+                }
+              });
+              console.log("=== Rendered Existing Buildings ===");
+            }
           }
         } catch (e) {
-          console.error("Error parsing zones from response", e);
+          console.error("Error parsing data from response", e);
         }
       },
       error: (err) => {
