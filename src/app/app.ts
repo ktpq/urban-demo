@@ -2,7 +2,8 @@ import '@arcgis/map-components/components/arcgis-map';
 import "@arcgis/map-components/components/arcgis-scene";
 import "@arcgis/map-components/components/arcgis-sketch";
 
-import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, ChangeDetectorRef } from '@angular/core';
+import { CommonModule } from '@angular/common';
 
 import { ApiService } from './services/api-service';
 
@@ -19,7 +20,7 @@ import SketchViewModel from '@arcgis/core/widgets/Sketch/SketchViewModel';
 
 @Component({
   selector: 'app-root',
-  imports: [], 
+  imports: [CommonModule], 
   templateUrl: './app.html',
   styleUrl: './app.css',
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
@@ -29,6 +30,8 @@ export class App implements OnInit {
   sceneComponent!: ArcgisScene;
 
   buildingHeight: number = 50;
+  isBoxSelected: boolean = false;
+  activeGraphic: any = null;
   
   graphicsLayer = new GraphicsLayer({
     elevationInfo: {
@@ -44,13 +47,26 @@ export class App implements OnInit {
   sketchViewModel!: SketchViewModel;
 
   constructor(
-    private apiService: ApiService
+    private apiService: ApiService,
+    private cdr: ChangeDetectorRef
   ){}
   
   updateHeight(event: Event) {
     const inputElement = event.target as HTMLInputElement;
     this.buildingHeight = Number(inputElement.value) || 1;
-    this.updateSketchSymbol();
+    this.updateSketchSymbol(); // อัปเดตสำหรับตึกก้อนถัดไปที่จะวาดใหม่
+
+    // อัปเดตความสูงของตึกที่ถูกคลิกเลือกอยู่ (ถ้ามี)
+    if (this.activeGraphic) {
+      this.activeGraphic.symbol = new PolygonSymbol3D({
+        symbolLayers: [
+          new ExtrudeSymbol3DLayer({
+            size: this.buildingHeight,
+            material: { color: "#ffffff" }
+          })
+        ]
+      });
+    }
   }
 
   // อัปเดตสัญลักษณ์เวลาเปลี่ยนความสูง
@@ -75,7 +91,7 @@ export class App implements OnInit {
 
   clearGraphics() {
     this.graphicsLayer.removeAll();
-    this.zoneGraphicsLayer.removeAll();
+    // this.zoneGraphicsLayer.removeAll();
   }
 
   onSceneReady(event: CustomEvent) {
@@ -112,10 +128,35 @@ export class App implements OnInit {
     });
 
     this.sketchViewModel.on("update", (event) => {
-      if (event.state === "complete" && event.graphics.length > 0) {
-        const polygon = event.graphics[0].geometry as any;
-        console.log("=== สกัดพิกัด (Rings) เมื่อแก้ไขเสร็จ ===");
-        console.log(JSON.stringify(polygon.rings, null, 2));
+      // เมื่อคลิกเลือกตึก (ดึงค่าความสูงมาแสดงแค่ตอน start เท่านั้น)
+      if (event.state === "start") {
+        if (event.graphics.length > 0) {
+          this.isBoxSelected = true;
+          this.activeGraphic = event.graphics[0];
+
+          // ดึงค่าความสูงจาก symbol มาใส่ช่อง Input
+          const symbol = this.activeGraphic.symbol as any;
+          if (symbol && symbol.symbolLayers && symbol.symbolLayers.length > 0) {
+            const layer = symbol.symbolLayers.getItemAt ? symbol.symbolLayers.getItemAt(0) : symbol.symbolLayers[0];
+            if (layer && layer.size !== undefined) {
+              this.buildingHeight = layer.size;
+            }
+          }
+          this.cdr.detectChanges();
+        }
+      }
+
+      // เมื่อเสร็จสิ้นการแก้ไข
+      if (event.state === "complete") {
+        this.isBoxSelected = false;
+        this.activeGraphic = null;
+        this.cdr.detectChanges();
+
+        if (event.graphics.length > 0) {
+          const polygon = event.graphics[0].geometry as any;
+          console.log("=== สกัดพิกัด (Rings) เมื่อแก้ไขเสร็จ ===");
+          console.log(JSON.stringify(polygon.rings, null, 2));
+        }
       }
     });
   }
