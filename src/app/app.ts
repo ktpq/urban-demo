@@ -359,6 +359,39 @@ export class App implements OnInit {
     this.graphicsLayer.add(graphic);
   }
 
+  createSpace(spaces: any[]) {
+    // สร้างตัวแปรเก็บข้อมูลเพื่อรวมตึกที่มีพิกัดแกน X, Y ตรงกัน (ตึกเดียวกันแต่คนละชั้น)
+    const buildingMap = new Map<string, { geometry: any, totalHeight: number }>();
+
+    spaces.forEach((space: any) => {
+      const rings = space.geometry?.rings;
+      if (!rings || rings.length === 0 || rings[0].length === 0) return;
+
+      // ใช้พิกัด X, Y ของจุดแรกเป็นตัวแทน (Signature) เพื่อจับกลุ่มว่าเป็นตึกเดียวกันไหม
+      const pt = rings[0][0];
+      const footprintKey = `${pt[0].toFixed(2)}_${pt[1].toFixed(2)}`;
+      
+      const floorHeight = space.attributes?.FloorHeight || 0;
+
+      if (buildingMap.has(footprintKey)) {
+        // ถ้าเคยเจอแล้ว ให้เอาความสูงชั้นใหม่บวกเพิ่มเข้าไป
+        buildingMap.get(footprintKey)!.totalHeight += floorHeight;
+      } else {
+        // ถ้าเพิ่งเจอครั้งแรก ให้จำ geometry และความสูงไว้
+        buildingMap.set(footprintKey, {
+          geometry: space.geometry,
+          totalHeight: floorHeight
+        });
+      }
+    });
+
+    // เอาตึกที่จัดกลุ่มและรวมความสูงแล้วไปวาด
+    buildingMap.forEach((building) => {
+       const finalHeight = building.totalHeight > 0 ? building.totalHeight : 30; // ถ้าไม่มีความสูงเลยให้เป็น 30
+       this.renderExistingBuilding(building.geometry, finalHeight);
+    });
+  }
+
   ngOnInit() {
     // ผู้เรียกใช้งานเป็นคนประกอบ Query ส่งไปเอง
     const myQuery = `
@@ -372,6 +405,10 @@ export class App implements OnInit {
                 }
                 parcels{
                     spaces {
+                        attributes {
+                            FloorHeight
+                            FloorNumber
+                        }
                         geometry {
                             rings
                         }
@@ -430,10 +467,7 @@ export class App implements OnInit {
               parcels.forEach((parcel: any) => {
                 const spaces = parcel.spaces;
                 if (spaces && spaces.length > 0) {
-                  spaces.forEach((space: any) => {
-                    // สร้างตึกเดิม (สมมติความสูง 30 เพราะใน JSON ไม่มี height มาให้)
-                    this.renderExistingBuilding(space.geometry, space.attributes?.FloorHeight);
-                  });
+                  this.createSpace(spaces);
                 }
               });
               console.log("=== Rendered Existing Buildings ===");
