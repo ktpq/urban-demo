@@ -12,6 +12,7 @@ import { ArcgisScene } from '@arcgis/map-components/components/arcgis-scene';
 
 import Graphic from '@arcgis/core/Graphic';
 import Polygon from '@arcgis/core/geometry/Polygon';
+import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
 import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol';
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import PolygonSymbol3D from '@arcgis/core/symbols/PolygonSymbol3D';
@@ -98,6 +99,64 @@ export class App implements OnInit {
     // this.zoneGraphicsLayer.removeAll();
   }
 
+  checkZoneRegulation() {
+    if (!this.activeGraphic) return;
+    
+    const buildingGeometry = this.activeGraphic.geometry; 
+    let isFullyInsideSomeZone = false;
+    let isPartiallyIntersecting = false;
+    let matchedZone = null;
+
+    for (let zone of this.zonesData) {
+        if (!zone.geometry || !zone.geometry.rings) continue;
+        
+        const zonePolygon = new Polygon({
+            rings: zone.geometry.rings,
+            spatialReference: zone.geometry.spatialReference
+        });
+
+        // 1. เช็คว่า "อยู่ข้างในโซนนี้แบบ 100%" หรือเปล่า?
+        const isWithin = geometryEngine.within(buildingGeometry, zonePolygon);
+        
+        // 2. เช็คว่า "ทับซ้อนแค่บางส่วน" หรือเปล่า? (โดนแค่ขอบๆ หรือยื่นออกไปข้างนอก)
+        const isIntersecting = geometryEngine.intersects(buildingGeometry, zonePolygon);
+
+        if (isWithin) {
+            // เงื่อนไขที่ 1: ตึกอยู่ข้างในโซนนี้ 100%
+            isFullyInsideSomeZone = true;
+            matchedZone = zone;
+            break; 
+        } else if (isIntersecting) {
+            // เงื่อนไขที่ 2: ทับซ้อนนะ แต่ไม่ได้อยู่ข้างในทั้งหมด (แปลว่ามีส่วนที่ล้นออกไป)
+            isPartiallyIntersecting = true;
+            // ยังไม่ break เพราะอาจจะไป within กับโซนอื่นที่ใหญ่กว่าก็ได้ (ถ้ามี)
+        }
+    }
+
+    // --- สรุปผลลัพธ์ ---
+    if (isFullyInsideSomeZone && matchedZone) {
+        // [เคสที่ 1]: วาดในโซนพอดีเป๊ะ -> ไปเช็ค Attributes (Regulation) ต่อ
+        const heightMax = matchedZone.zoneType?.attributes?.HeightMax;
+        console.log(`[PASS] ตึกวาดอยู่ภายในโซนสมบูรณ์ ความสูงจำกัดคือ ${heightMax} เมตร`);
+        
+        // TODO: เช็ค Regulation เช่น ความสูงเกินไหม
+        if (heightMax !== undefined && this.buildingHeight > heightMax) {
+            console.log("-> ❌ แต่ความสูงเกิน!");
+        } else {
+            console.log("-> ✅ ความสูงผ่าน สร้างได้!");
+        }
+
+    } else if (isPartiallyIntersecting) {
+        // [เคสที่ 2]: วาดทับโซนนะ แต่มีส่วนที่ล้นออกมานอกขอบเขตโซน
+        console.warn("[WARNING] ตึกมีส่วนที่ล้นออกไปนอกโซน กรุณาวาดให้อยู่ภายในขอบเขตของโซน");
+        // ไม่ต้องไปเช็ค Attributes ต่อ ตามที่คุณต้องการ
+
+    } else {
+        // [เคสที่ 3]: ไม่ได้แตะโซนไหนเลย (วาดข้างนอกล้วนๆ)
+        console.log("[FREE] ตึกนี้ไม่ได้อยู่ในโซนไหนเลย จะทำอะไรก็ทำได้เลยครับ");
+    }
+  }
+
   // TODO: ในอนาคตจะยิง API เพื่อเช็ค regulation (เช่น ความสูงเกินที่โซนกำหนดหรือไม่)
   confirmBuilding() {
     console.log("=== ยืนยันการสร้างตึก ===");
@@ -106,6 +165,9 @@ export class App implements OnInit {
     if (this.activeGraphic) {
       const polygon = this.activeGraphic.geometry as any;
       console.log("พิกัด (Rings):", JSON.stringify(polygon.rings, null, 2));
+      
+      // เรียกฟังก์ชันเช็คพื้นที่ทับซ้อน
+      this.checkZoneRegulation();
     }
 
     // TODO: เรียก API เช็ค regulation ตรงนี้
@@ -125,6 +187,9 @@ export class App implements OnInit {
     if (this.activeGraphic) {
       const polygon = this.activeGraphic.geometry as any;
       console.log("พิกัด (Rings):", JSON.stringify(polygon.rings, null, 2));
+
+      // เรียกฟังก์ชันเช็คพื้นที่ทับซ้อน
+      this.checkZoneRegulation();
     }
 
     // TODO: เรียก API เช็ค regulation ตรงนี้
