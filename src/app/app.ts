@@ -32,6 +32,7 @@ export class App implements OnInit {
   readonly DEFAULT_HEIGHT = 30;
   buildingHeight: number = 30;
   isBoxSelected: boolean = false;
+  isDrawingComplete: boolean = false;
   activeGraphic: any = null;
   
   graphicsLayer = new GraphicsLayer({
@@ -95,6 +96,25 @@ export class App implements OnInit {
     // this.zoneGraphicsLayer.removeAll();
   }
 
+  // TODO: ในอนาคตจะยิง API เพื่อเช็ค regulation (เช่น ความสูงเกินที่โซนกำหนดหรือไม่)
+  confirmBuilding() {
+    console.log("=== ยืนยันการสร้างตึก ===");
+    console.log("ความสูง:", this.buildingHeight, "เมตร");
+
+    if (this.activeGraphic) {
+      const polygon = this.activeGraphic.geometry as any;
+      console.log("พิกัด (Rings):", JSON.stringify(polygon.rings, null, 2));
+    }
+
+    // TODO: เรียก API เช็ค regulation ตรงนี้
+
+    // reset สถานะกลับคืน
+    this.isDrawingComplete = false;
+    this.activeGraphic = null;
+    this.buildingHeight = this.DEFAULT_HEIGHT;
+    this.updateSketchSymbol();
+  }
+
   onSceneReady(event: CustomEvent) {
     console.log('Scene is ready', event);
     this.sceneComponent = event.target as ArcgisScene;
@@ -116,16 +136,20 @@ export class App implements OnInit {
 
     this.updateSketchSymbol();
 
-    // ดักจับ Event เมื่อวาดเสร็จ หรือแก้ไขเสร็จ
+    // ดักจับ Event เมื่อวาดเสร็จ
     this.sketchViewModel.on("create", (event) => {
       if (event.state === "complete") {
         let polygon: any;
         if (event.graphic){
           polygon = event.graphic.geometry as any;
+          this.activeGraphic = event.graphic; // เก็บตึกที่เพิ่งวาดเสร็จไว้
         }
+        this.isDrawingComplete = true; // โชว์ปุ่มยืนยัน
+        this.cdr.detectChanges();
         console.log("=== สกัดพิกัด (Rings) เมื่อสร้างเสร็จ ===");
         console.log(JSON.stringify(polygon.rings, null, 2));
       }
+
     });
 
     this.sketchViewModel.on("update", (event) => {

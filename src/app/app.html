@@ -15,7 +15,7 @@
         <h2 class="text-xl font-bold text-gray-800">3D Building Editor</h2>
         <p class="text-sm text-gray-600 leading-relaxed">กำหนดความสูงที่ต้องการ กดปุ่มวาดตึก แล้ว <b>"คลิกลาก"</b> บนแผนที่เพื่อกางขนาดฐานตึก</p>
         
-        <div class="flex flex-col gap-2 mt-2" *ngIf="isBoxSelected">
+        <div class="flex flex-col gap-2 mt-2" *ngIf="isBoxSelected || isDrawingComplete">
             <label class="text-sm font-semibold text-gray-700">ความสูงตึก (เมตร):</label>
             <input 
                 type="number" 
@@ -25,7 +25,13 @@
                 min="1" max="1000" />
         </div>
 
-        <button 
+        <button *ngIf="isDrawingComplete"
+            class="mt-2 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded shadow transition-colors cursor-pointer"
+            (click)="confirmBuilding()">
+            ✅ ยืนยันการสร้าง (Confirm Building)
+        </button>
+
+        <button *ngIf="!isDrawingComplete"
             class="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded shadow transition-colors cursor-pointer"
             (click)="startDrawing()">
             ➕ วาดตึกสี่เหลี่ยม (Draw Rectangle)
