@@ -29,7 +29,8 @@ export class App implements OnInit {
   mapComponent!: ArcgisMap;
   sceneComponent!: ArcgisScene;
 
-  buildingHeight: number = 50;
+  readonly DEFAULT_HEIGHT = 30;
+  buildingHeight: number = 30;
   isBoxSelected: boolean = false;
   activeGraphic: any = null;
   
@@ -146,10 +147,12 @@ export class App implements OnInit {
         }
       }
 
-      // เมื่อเสร็จสิ้นการแก้ไข
+      // เมื่อเสร็จสิ้นการแก้ไข -> reset ค่ากลับเป็น default
       if (event.state === "complete") {
         this.isBoxSelected = false;
         this.activeGraphic = null;
+        this.buildingHeight = this.DEFAULT_HEIGHT;
+        this.updateSketchSymbol();
         this.cdr.detectChanges();
 
         if (event.graphics.length > 0) {
