@@ -142,18 +142,34 @@ export class App implements OnInit {
         // TODO: เช็ค Regulation เช่น ความสูงเกินไหม
         if (heightMax !== undefined && this.buildingHeight > heightMax) {
             console.log("-> ❌ แต่ความสูงเกิน!");
+            return {
+              status: "error",
+              message: `ความสูงเกิน! ความสูงต้องไม่เกิน ${heightMax} เมตร`
+            }
         } else {
             console.log("-> ✅ ความสูงผ่าน สร้างได้!");
+            return {
+              status: "success",
+              message: "สร้างสำเร็จ!"
+            }
         }
 
     } else if (isPartiallyIntersecting) {
         // [เคสที่ 2]: วาดทับโซนนะ แต่มีส่วนที่ล้นออกมานอกขอบเขตโซน
         console.warn("[WARNING] ตึกมีส่วนที่ล้นออกไปนอกโซน กรุณาวาดให้อยู่ภายในขอบเขตของโซน");
+        return {
+          status: "error",
+          message: "ตึกมีส่วนที่ล้นออกไปนอกโซน กรุณาวาดให้อยู่ภายในขอบเขตของโซน"
+        }
         // ไม่ต้องไปเช็ค Attributes ต่อ ตามที่คุณต้องการ
 
     } else {
         // [เคสที่ 3]: ไม่ได้แตะโซนไหนเลย (วาดข้างนอกล้วนๆ)
         console.log("[FREE] ตึกนี้ไม่ได้อยู่ในโซนไหนเลย จะทำอะไรก็ทำได้เลยครับ");
+        return {
+            status: "success",
+            message: "สร้างสำเร็จ!"
+        }
     }
   }
 
@@ -167,16 +183,23 @@ export class App implements OnInit {
       console.log("พิกัด (Rings):", JSON.stringify(polygon.rings, null, 2));
       
       // เรียกฟังก์ชันเช็คพื้นที่ทับซ้อน
-      this.checkZoneRegulation();
+      if (this.checkZoneRegulation()!.status === "error"){
+        alert(this.checkZoneRegulation()!.message);
+      } else {
+        alert(this.checkZoneRegulation()!.message)
+        // reset สถานะกลับคืน
+        this.isDrawingComplete = false;
+        this.activeGraphic = null;
+        this.buildingHeight = this.DEFAULT_HEIGHT;
+        this.updateSketchSymbol();
+      }
     }
 
     // TODO: เรียก API เช็ค regulation ตรงนี้
 
-    // reset สถานะกลับคืน
-    this.isDrawingComplete = false;
-    this.activeGraphic = null;
-    this.buildingHeight = this.DEFAULT_HEIGHT;
-    this.updateSketchSymbol();
+    if (this.sketchViewModel) {
+      this.sketchViewModel.complete();
+    }
   }
 
   // TODO: ในอนาคตจะยิง API เพื่อเช็ค regulation หลังแก้ไขตึก
@@ -189,16 +212,19 @@ export class App implements OnInit {
       console.log("พิกัด (Rings):", JSON.stringify(polygon.rings, null, 2));
 
       // เรียกฟังก์ชันเช็คพื้นที่ทับซ้อน
-      this.checkZoneRegulation();
+      if (this.checkZoneRegulation()!.status === "error"){
+        alert(this.checkZoneRegulation()!.message)
+      } else {
+        alert(this.checkZoneRegulation()!.message)
+        // reset สถานะกลับคืน
+        this.isDrawingComplete = false;
+        this.activeGraphic = null;
+        this.buildingHeight = this.DEFAULT_HEIGHT;
+        this.updateSketchSymbol();
+      }
     }
 
     // TODO: เรียก API เช็ค regulation ตรงนี้
-
-    // reset สถานะกลับคืน
-    this.isBoxSelected = false;
-    this.activeGraphic = null;
-    this.buildingHeight = this.DEFAULT_HEIGHT;
-    this.updateSketchSymbol();
     
     // สั่งให้ SketchViewModel ยกเลิกโหมดแก้ไข
     if (this.sketchViewModel) {
