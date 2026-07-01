@@ -35,6 +35,8 @@ export class App implements OnInit {
   isDrawingComplete: boolean = false;
   activeGraphic: any = null;
   
+  zonesData: any[] = []; // เก็บข้อมูล zone ที่ดึงมาจาก API
+  
   graphicsLayer = new GraphicsLayer({
     elevationInfo: {
       mode: "on-the-ground"
@@ -289,8 +291,11 @@ export class App implements OnInit {
           const zones = response?.data?.urbanDesignDatabase?.plans?.[0]?.branches?.[0]?.zones;
           if (zones && zones.length > 0) {
             zones.forEach((zone: any) => {
+              this.zonesData.push(zone); // เก็บ zone ลง array
               this.drawZoningPolygon(zone.geometry);
             });
+            console.log("=== All Zones Data ===");
+            console.log(this.zonesData);
           }
         } catch (e) {
           console.error("Error parsing zones from response", e);
