@@ -344,6 +344,13 @@ export class App implements OnInit {
                     GlobalID
                     BranchName
                 }
+                parcels{
+                    spaces {
+                        geometry {
+                            rings
+                        }
+                    }
+                }
                 zones {
                     geometry {
                         rings
