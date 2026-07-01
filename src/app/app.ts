@@ -9,6 +9,9 @@ import { ApiService } from './services/api-service';
 import { ArcgisMap } from '@arcgis/map-components/components/arcgis-map';
 import { ArcgisScene } from '@arcgis/map-components/components/arcgis-scene';
 
+import Graphic from '@arcgis/core/Graphic';
+import Polygon from '@arcgis/core/geometry/Polygon';
+import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol';
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import PolygonSymbol3D from '@arcgis/core/symbols/PolygonSymbol3D';
 import ExtrudeSymbol3DLayer from '@arcgis/core/symbols/ExtrudeSymbol3DLayer';
@@ -32,6 +35,12 @@ export class App implements OnInit {
       mode: "on-the-ground"
     }
   });
+  zoneGraphicsLayer = new GraphicsLayer({
+    elevationInfo: {
+      mode: "on-the-ground"
+    }
+  });
+
   sketchViewModel!: SketchViewModel;
 
   constructor(
@@ -66,6 +75,7 @@ export class App implements OnInit {
 
   clearGraphics() {
     this.graphicsLayer.removeAll();
+    this.zoneGraphicsLayer.removeAll();
   }
 
   onSceneReady(event: CustomEvent) {
@@ -74,12 +84,13 @@ export class App implements OnInit {
     const view = this.sceneComponent.view;
 
     if (this.sceneComponent.map){
+      this.sceneComponent.map.add(this.zoneGraphicsLayer); // แยก Layer สำหรับแสดงโซนเฉยๆ ไม่ให้ขยับได้
       this.sceneComponent.map.add(this.graphicsLayer);
     }
 
     this.sketchViewModel = new SketchViewModel({
       view: view,
-      layer: this.graphicsLayer,
+      layer: this.graphicsLayer, // Sketch จะยุ่งแค่กับ graphicsLayer เท่านั้น
       updateOnGraphicClick: true,
       defaultUpdateOptions: {
         tool: "reshape" // ใช้โหมด reshape เพื่อให้ดึงแก้พิกัดทีละมุมได้
@@ -109,37 +120,64 @@ export class App implements OnInit {
     });
   }
 
+  drawZoningPolygon(geometry: any) {
+    if (!geometry || !geometry.rings) return;
+
+    const polygon = new Polygon({
+      rings: geometry.rings,
+      spatialReference: geometry.spatialReference
+    });
+
+    const fillSymbol = new SimpleFillSymbol({
+      color: [135, 206, 235, 0.4], // สีฟ้าอ่อนโปร่งใส 40% (Sky Blue)
+      outline: {
+        color: [135, 206, 235, 1], // เส้นขอบสีฟ้า
+        width: 2
+      }
+    });
+
+    const graphic = new Graphic({
+      geometry: polygon,
+      symbol: fillSymbol
+    });
+
+    this.zoneGraphicsLayer.add(graphic); // แปะลงใน Layer แยก จะได้คลิกขยับไม่ได้
+    console.log("Draw zoning polygon success!");
+  }
+
   ngOnInit() {
     // ผู้เรียกใช้งานเป็นคนประกอบ Query ส่งไปเอง
     const myQuery = `
       query {
-      urbanModel(urbanModelId: "4b72290edfb44687a1a805d14287f447") {
-        id
-        access
-        urbanDesignDatabases {
-          plans {
-            attributes {
-                EventName
+    urbanDesignDatabase(urbanDesignDatabaseId: "057f8a4e29d94c8188f1eb4e08190931"){
+        plans{
+            branches(filter: {globalIDs: "95d8c735-991b-436f-ae2b-461c82deaee1"}){
+                attributes {
+                    GlobalID
+                    BranchName
+                }
+                zones {
+                    geometry {
+                        rings
+                        spatialReference {
+                            wkid
+                        }
+                    }
+                    zoneType {
+                        attributes {
+                            HeightMax
+                            CoverageMax
+                        }
+                    }
+                }
             }
-          }
-          projects {
-            attributes {
-              GlobalID
-              EventName
-              Address
-              
-            }
-            geometry{
-              rings
-              spatialReference {
-                wkid
-              }
-            }
-          
-          }
+            
+            
         }
-      }
+
     }
+}
+
     `;
 
     const myVariables = {
@@ -150,6 +188,18 @@ export class App implements OnInit {
       next: (response) => {
         console.log("=== API Response ===");
         console.log(response);
+
+        // ดึง rings มาวาดเป็น Polygon
+        try {
+          const zones = response?.data?.urbanDesignDatabase?.plans?.[0]?.branches?.[0]?.zones;
+          if (zones && zones.length > 0) {
+            zones.forEach((zone: any) => {
+              this.drawZoningPolygon(zone.geometry);
+            });
+          }
+        } catch (e) {
+          console.error("Error parsing zones from response", e);
+        }
       },
       error: (err) => {
         console.error("API Error in ngOnInit:", err);
