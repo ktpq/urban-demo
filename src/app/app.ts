@@ -110,5 +110,50 @@ export class App implements OnInit {
   }
 
   ngOnInit() {
+    // ผู้เรียกใช้งานเป็นคนประกอบ Query ส่งไปเอง
+    const myQuery = `
+      query {
+      urbanModel(urbanModelId: "4b72290edfb44687a1a805d14287f447") {
+        id
+        access
+        urbanDesignDatabases {
+          plans {
+            attributes {
+                EventName
+            }
+          }
+          projects {
+            attributes {
+              GlobalID
+              EventName
+              Address
+              
+            }
+            geometry{
+              rings
+              spatialReference {
+                wkid
+              }
+            }
+          
+          }
+        }
+      }
+    }
+    `;
+
+    const myVariables = {
+      id: "ec88218ad29b4f5c919de98764259515"
+    };
+
+    this.apiService.executeGraphQL(myQuery, myVariables).subscribe({
+      next: (response) => {
+        console.log("=== API Response ===");
+        console.log(response);
+      },
+      error: (err) => {
+        console.error("API Error in ngOnInit:", err);
+      }
+    });
   }
 }
