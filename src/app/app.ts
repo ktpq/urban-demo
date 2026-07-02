@@ -187,6 +187,11 @@ export class App implements OnInit {
         alert(this.checkZoneRegulation()!.message);
       } else {
         alert(this.checkZoneRegulation()!.message)
+        console.log(this.activeGraphic)
+        
+        // ยิง Mutation เพื่อบันทึกตึกลงฐานข้อมูล
+        this.createMutationBuilding();
+
         // reset สถานะกลับคืน
         this.isDrawingComplete = false;
         this.activeGraphic = null;
@@ -230,6 +235,53 @@ export class App implements OnInit {
     if (this.sketchViewModel) {
       this.sketchViewModel.complete();
     }
+  }
+
+  createMutationBuilding() {
+    if (!this.activeGraphic) return;
+
+    const mutationQuery = `
+      mutation CreateLOD1($urbanDesignDatabaseId: PortalItemId!, $newLod1Building: [CreateLOD1BuildingInput!]!) {
+        createLOD1Buildings(urbanDatabaseId: $urbanDesignDatabaseId, lod1Buildings: $newLod1Building) {
+          attributes {
+            GlobalID
+            BranchID
+            CustomID
+            Height
+          }
+        }
+      }
+    `;
+
+    const polygon = this.activeGraphic.geometry as any;
+    const mutationVariables = {
+      urbanDesignDatabaseId: "057f8a4e29d94c8188f1eb4e08190931",
+      newLod1Building: [
+        {
+          attributes: {
+            BranchID: "95d8c735-991b-436f-ae2b-461c82deaee1",
+            Height: this.buildingHeight
+          },
+          geometry: {
+            rings: polygon.rings,
+            spatialReference: {
+              wkid: 3857
+            }
+          }
+        }
+      ]
+    };
+
+    console.log("=== Sending Mutation ===", mutationVariables);
+    this.apiService.executeGraphQL(mutationQuery, mutationVariables).subscribe({
+      next: (response) => {
+        console.log("=== สร้างตึก LOD1 สำเร็จ! ===");
+        console.log(response);
+      },
+      error: (err) => {
+        console.error("เกิดข้อผิดพลาดในการสร้างตึก:", err);
+      }
+    });
   }
 
   onSceneReady(event: CustomEvent) {
