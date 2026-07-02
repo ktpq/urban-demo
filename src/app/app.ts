@@ -352,6 +352,40 @@ export class App implements OnInit {
     });
   }
 
+  deleteMutationBuilding(globalIDs: string[]) {
+    if (!globalIDs || globalIDs.length === 0) return;
+
+    const mutationQuery = `
+      mutation DeleteSpace($urbanDatabaseId: PortalItemId!, $globalIDs: [GlobalID!]!) {
+        deleteSpaces(
+          urbanDatabaseId: $urbanDatabaseId, 
+          globalIDs: $globalIDs, 
+          cascade: true
+        ) {
+          attributes {
+            GlobalID
+          }
+        }
+      }
+    `;
+
+    const mutationVariables = {
+      urbanDatabaseId: "057f8a4e29d94c8188f1eb4e08190931",
+      globalIDs: globalIDs
+    };
+
+    console.log("=== Sending Delete Mutation ===", mutationVariables);
+    this.apiService.executeGraphQL(mutationQuery, mutationVariables).subscribe({
+      next: (response) => {
+        console.log("=== ลบตึกออกจากระบบสำเร็จ! ===");
+        console.log(response);
+      },
+      error: (err) => {
+        console.error("เกิดข้อผิดพลาดในการลบตึก:", err);
+      }
+    });
+  }
+
   onSceneReady(event: CustomEvent) {
     console.log('Scene is ready', event);
     this.sceneComponent = event.target as ArcgisScene;
@@ -430,6 +464,29 @@ export class App implements OnInit {
           console.log(JSON.stringify(polygon.rings, null, 2));
         }
       }
+    });
+
+    // ดักจับ Event ลบ (เมื่อเลือกตึกแล้วกด Delete/Backspace)
+    this.sketchViewModel.on("delete", (event) => {
+      // event.graphics คือ Array ของตึกที่ถูกเลือกลบ (อาจลบพร้อมกันหลายตึกได้)
+      event.graphics.forEach((graphic: any) => {
+        const attrs = graphic.attributes;
+        if (attrs && attrs.spaceGlobalIDs && attrs.spaceGlobalIDs.length > 0) {
+          console.log("กำลังลบตึก GlobalIDs:", attrs.spaceGlobalIDs);
+          // ยิง API ลบตึก
+          this.deleteMutationBuilding(attrs.spaceGlobalIDs);
+        } else {
+          console.log("ตึกที่ลบยังไม่มี GlobalID ในระบบ (อาจเป็นตึกที่เพิ่งวาดแต่ยังไม่ได้เซฟ)");
+        }
+      });
+      
+      // Reset สถานะต่างๆ ให้กลับเป็นปกติ
+      this.isBoxSelected = false;
+      this.activeGraphic = null;
+      this.activeSpaceGlobalIDs = [];
+      this.buildingHeight = this.DEFAULT_HEIGHT;
+      this.updateSketchSymbol();
+      this.cdr.detectChanges();
     });
   }
 
