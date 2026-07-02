@@ -191,6 +191,7 @@ export class App implements OnInit {
         
         // ยิง Mutation เพื่อบันทึกตึกลงฐานข้อมูล
         this.createMutationBuilding();
+        console.log("geometry: ",this.activeGraphic.geometry.rings);
 
         // reset สถานะกลับคืน
         this.isDrawingComplete = false;
@@ -241,35 +242,48 @@ export class App implements OnInit {
     if (!this.activeGraphic) return;
 
     const mutationQuery = `
-      mutation CreateLOD1($urbanDesignDatabaseId: PortalItemId!, $newLod1Building: [CreateLOD1BuildingInput!]!) {
-        createLOD1Buildings(urbanDatabaseId: $urbanDesignDatabaseId, lod1Buildings: $newLod1Building) {
-          attributes {
+      mutation CreateSpace($urbanDesignDatabaseId: PortalItemId!, $newSpace: [CreateSpaceInput!]!){
+    createSpaces(urbanDatabaseId: $urbanDesignDatabaseId, spaces: $newSpace){
+        geometry {
+            rings
+        }
+        attributes {
             GlobalID
             BranchID
             CustomID
-            Height
-          }
         }
-      }
+    }
+}
     `;
 
     const polygon = this.activeGraphic.geometry as any;
+
+    // แปลง 2D ให้กลายเป็น 3D (เติม 0 ต่อท้าย) เพื่อป้องกัน Error: z value is required
+    // const rings3D = polygon.rings.map((ring: any[]) => 
+    //   ring.map((pt: any[]) => pt.length === 2 ? [pt[0], pt[1], 0] : pt)
+    // );
+
     const mutationVariables = {
       urbanDesignDatabaseId: "057f8a4e29d94c8188f1eb4e08190931",
-      newLod1Building: [
+      newSpace: [
         {
-          attributes: {
-            BranchID: "95d8c735-991b-436f-ae2b-461c82deaee1",
-            Height: this.buildingHeight
-          },
-          geometry: {
-            rings: polygon.rings,
-            spatialReference: {
-              wkid: 3857
+            geometry: {
+                rings: polygon.rings,
+                spatialReference: {
+                    wkid: 3857
+                }
+            },
+            attributes: {
+                ParcelID: "9d7bfb92-96b6-4b7e-b840-aeb93d5ae5a6",
+                SpaceType: "Building",
+                SpaceUseTypeID: "15585cae-fec0-4050-8ecc-dd2f6619d5a6",
+                FloorHeight: this.buildingHeight,
+                BuildingNumber: 1,
+                FloorNumber: 1,
+                BranchID:"95d8c735-991b-436f-ae2b-461c82deaee1"
             }
-          }
         }
-      ]
+   ]
     };
 
     console.log("=== Sending Mutation ===", mutationVariables);

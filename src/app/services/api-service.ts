@@ -23,7 +23,7 @@ export class ApiService {
     
     const payload = {
       query: query,
-      // variables: variables
+      variables: variables
     };
 
     return this.http.post(environment.urbanApiUrl, payload, { headers }).pipe(
