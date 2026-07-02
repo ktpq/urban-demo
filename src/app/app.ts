@@ -37,6 +37,7 @@ export class App implements OnInit {
   activeGraphic: any = null;
   
   zonesData: any[] = []; // เก็บข้อมูล zone ที่ดึงมาจาก API
+  activeSpaceGlobalIDs: string[] = []; // เก็บ GlobalID ของ spaces ตอนคลิกเลือกตึก
   
   graphicsLayer = new GraphicsLayer({
     elevationInfo: {
@@ -222,9 +223,14 @@ export class App implements OnInit {
         alert(this.checkZoneRegulation()!.message)
       } else {
         alert(this.checkZoneRegulation()!.message)
+
+        // ยิง Mutation เพื่ออัปเดตตึกในฐานข้อมูล
+        this.updateMutationBuilding();
+
         // reset สถานะกลับคืน
         this.isDrawingComplete = false;
         this.activeGraphic = null;
+        this.activeSpaceGlobalIDs = [];
         this.buildingHeight = this.DEFAULT_HEIGHT;
         this.updateSketchSymbol();
       }
@@ -298,6 +304,54 @@ export class App implements OnInit {
     });
   }
 
+  updateMutationBuilding() {
+    if (!this.activeGraphic || this.activeSpaceGlobalIDs.length === 0) return;
+
+    const mutationQuery = `
+      mutation UpdateSpace($urbanDesignDatabaseId: PortalItemId!, $updateSpaces: [UpdateSpaceInput!]!) {
+        updateSpaces(urbanDatabaseId: $urbanDesignDatabaseId, spaces: $updateSpaces) {
+          attributes {
+            GlobalID
+            BranchID
+          }
+        }
+      }
+    `;
+
+    const polygon = this.activeGraphic.geometry as any;
+    const rings3D = polygon.rings.map((ring: any[]) =>
+      ring.map((pt: any[]) => pt.length === 2 ? [pt[0], pt[1], 0] : pt)
+    );
+
+    // สร้าง Array ของ spaces ที่ต้อง update (ทุกชั้นที่อยู่ในตึกเดียวกัน)
+    const updateSpacesData = this.activeSpaceGlobalIDs.map((gid: string) => ({
+      attributes: {
+        GlobalID: gid,
+        FloorHeight: this.buildingHeight
+      },
+      geometry: {
+        rings: rings3D,
+        spatialReference: { wkid: 3857 }
+      }
+    }));
+
+    const mutationVariables = {
+      urbanDesignDatabaseId: "057f8a4e29d94c8188f1eb4e08190931",
+      updateSpaces: updateSpacesData
+    };
+
+    console.log("=== Sending Update Mutation ===", mutationVariables);
+    this.apiService.executeGraphQL(mutationQuery, mutationVariables).subscribe({
+      next: (response) => {
+        console.log("=== อัปเดตตึกสำเร็จ! ===");
+        console.log(response);
+      },
+      error: (err) => {
+        console.error("เกิดข้อผิดพลาดในการอัปเดตตึก:", err);
+      }
+    });
+  }
+
   onSceneReady(event: CustomEvent) {
     console.log('Scene is ready', event);
     this.sceneComponent = event.target as ArcgisScene;
@@ -354,6 +408,10 @@ export class App implements OnInit {
             }
           }
           this.cdr.detectChanges();
+
+          // เก็บ GlobalID ของ spaces ไว้ใช้ตอนยิง updateMutation
+          const attrs = this.activeGraphic.attributes;
+          this.activeSpaceGlobalIDs = attrs?.spaceGlobalIDs || [];
         }
       }
 
@@ -361,6 +419,7 @@ export class App implements OnInit {
       if (event.state === "complete") {
         this.isBoxSelected = false;
         this.activeGraphic = null;
+        this.activeSpaceGlobalIDs = [];
         this.buildingHeight = this.DEFAULT_HEIGHT;
         this.updateSketchSymbol();
         this.cdr.detectChanges();
@@ -399,7 +458,7 @@ export class App implements OnInit {
     console.log("Draw zoning polygon success!");
   }
 
-  renderExistingBuilding(geometry: any, height: number) {
+  renderExistingBuilding(geometry: any, height: number, spaceGlobalIDs: string[] = []) {
     if (!geometry || !geometry.rings) return;
 
     const polygon = new Polygon({
@@ -418,7 +477,10 @@ export class App implements OnInit {
 
     const graphic = new Graphic({
       geometry: polygon,
-      symbol: polygonSymbol
+      symbol: polygonSymbol,
+      attributes: {
+        spaceGlobalIDs: spaceGlobalIDs
+      }
     });
 
     // สำคัญ: เอาไปแปะใน graphicsLayer ที่ SketchViewModel จับตาดูอยู่
@@ -427,7 +489,7 @@ export class App implements OnInit {
 
   createSpace(spaces: any[]) {
     // สร้างตัวแปรเก็บข้อมูลเพื่อรวมตึกที่มีพิกัดแกน X, Y ตรงกัน (ตึกเดียวกันแต่คนละชั้น)
-    const buildingMap = new Map<string, { geometry: any, totalHeight: number }>();
+    const buildingMap = new Map<string, { geometry: any, totalHeight: number, spaceGlobalIDs: string[] }>();
 
     spaces.forEach((space: any) => {
       const rings = space.geometry?.rings;
@@ -438,15 +500,18 @@ export class App implements OnInit {
       const footprintKey = `${pt[0].toFixed(2)}_${pt[1].toFixed(2)}`;
       
       const floorHeight = space.attributes?.FloorHeight || 0;
+      const gid = space.attributes?.GlobalID;
 
       if (buildingMap.has(footprintKey)) {
         // ถ้าเคยเจอแล้ว ให้เอาความสูงชั้นใหม่บวกเพิ่มเข้าไป
         buildingMap.get(footprintKey)!.totalHeight += floorHeight;
+        if (gid) buildingMap.get(footprintKey)!.spaceGlobalIDs.push(gid);
       } else {
         // ถ้าเพิ่งเจอครั้งแรก ให้จำ geometry และความสูงไว้
         buildingMap.set(footprintKey, {
           geometry: space.geometry,
-          totalHeight: floorHeight
+          totalHeight: floorHeight,
+          spaceGlobalIDs: gid ? [gid] : []
         });
       }
     });
@@ -454,7 +519,7 @@ export class App implements OnInit {
     // เอาตึกที่จัดกลุ่มและรวมความสูงแล้วไปวาด
     buildingMap.forEach((building) => {
        const finalHeight = building.totalHeight > 0 ? building.totalHeight : 30; // ถ้าไม่มีความสูงเลยให้เป็น 30
-       this.renderExistingBuilding(building.geometry, finalHeight);
+       this.renderExistingBuilding(building.geometry, finalHeight, building.spaceGlobalIDs);
     });
   }
 
@@ -472,6 +537,7 @@ export class App implements OnInit {
                 parcels{
                     spaces {
                         attributes {
+                            GlobalID
                             FloorHeight
                             FloorNumber
                         }
