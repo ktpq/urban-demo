@@ -35,6 +35,10 @@ export class App implements OnInit {
   isBoxSelected: boolean = false;
   isDrawingComplete: boolean = false;
   activeGraphic: any = null;
+
+  // สำหรับจดจำค่าก่อนทำการอัปเดต เพื่อย้อนกลับเมื่อผิดเงื่อนไข
+  originalGeometry: any = null;
+  originalHeight: number = 30;
   
   zonesData: any[] = []; // เก็บข้อมูล zone ที่ดึงมาจาก API
   activeSpaceGlobalIDs: string[] = []; // เก็บ GlobalID ของ spaces ตอนคลิกเลือกตึก
@@ -186,6 +190,14 @@ export class App implements OnInit {
       // เรียกฟังก์ชันเช็คพื้นที่ทับซ้อน
       if (this.checkZoneRegulation()!.status === "error"){
         alert(this.checkZoneRegulation()!.message);
+        
+        // --- ADDED REVERT LOGIC ---
+        // ลบกราฟิกที่เพิ่งวาดทิ้งไปเลย
+        this.graphicsLayer.remove(this.activeGraphic);
+        this.isDrawingComplete = false;
+        this.activeGraphic = null;
+        this.buildingHeight = this.DEFAULT_HEIGHT;
+        this.updateSketchSymbol();
       } else {
         alert(this.checkZoneRegulation()!.message)
         console.log(this.activeGraphic)
@@ -221,6 +233,27 @@ export class App implements OnInit {
       // เรียกฟังก์ชันเช็คพื้นที่ทับซ้อน
       if (this.checkZoneRegulation()!.status === "error"){
         alert(this.checkZoneRegulation()!.message)
+
+        // --- ADDED REVERT LOGIC ---
+        // คืนค่าพิกัดเดิม
+        this.activeGraphic.geometry = this.originalGeometry;
+        // คืนค่าความสูงเดิม
+        this.buildingHeight = this.originalHeight;
+        this.activeGraphic.symbol = new PolygonSymbol3D({
+          symbolLayers: [
+            new ExtrudeSymbol3DLayer({
+              size: this.originalHeight,
+              material: { color: "#ffffff" }
+            })
+          ]
+        });
+        
+        // reset สถานะ
+        this.isBoxSelected = false;
+        this.activeGraphic = null;
+        this.activeSpaceGlobalIDs = [];
+        this.buildingHeight = this.DEFAULT_HEIGHT;
+        this.updateSketchSymbol();
       } else {
         alert(this.checkZoneRegulation()!.message)
 
@@ -433,13 +466,19 @@ export class App implements OnInit {
           }
           this.activeGraphic = event.graphics[0];
 
+          // จดจำค่าดั้งเดิมเอาไว้เผื่อต้องย้อนกลับ (Revert)
+          this.originalGeometry = this.activeGraphic.geometry.clone();
+
           // ดึงค่าความสูงจาก symbol มาใส่ช่อง Input
           const symbol = this.activeGraphic.symbol as any;
           if (symbol && symbol.symbolLayers && symbol.symbolLayers.length > 0) {
             const layer = symbol.symbolLayers.getItemAt ? symbol.symbolLayers.getItemAt(0) : symbol.symbolLayers[0];
             if (layer && layer.size !== undefined) {
               this.buildingHeight = layer.size;
+              this.originalHeight = layer.size; // จดจำความสูงดั้งเดิม
             }
+          } else {
+              this.originalHeight = this.DEFAULT_HEIGHT;
           }
           this.cdr.detectChanges();
 
