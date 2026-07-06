@@ -194,12 +194,12 @@ export class App implements OnInit {
         // check regulation coverage
         const spaceUse = Math.round(geometryEngine.geodesicArea(buildingGeometry, "square-meters"))
         const spaceAllow = Math.round(matchedParcel.attributes?.Area * coverageMax)
-        const currentCoverage = (spaceUse / spaceAllow) * (coverageMax*100)
+        const currentCoverage = Math.round((spaceUse / spaceAllow) * (coverageMax*100));
         const maxCoverage = coverageMax*100
         if (currentCoverage >= maxCoverage) {
           return {
             status: "error",
-            message: "Coverage มากเกินไป กรุณาลดขนาดตึก !"
+            message: `Coverage ${currentCoverage} มากเกินไป กรุณาลดขนาดตึก ให้ไม่เกิน ${maxCoverage} !`
           }
         }
 
