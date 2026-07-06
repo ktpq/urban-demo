@@ -142,6 +142,8 @@ export class App implements OnInit {
     if (isFullyInsideSomeZone && matchedZone) {
         // [เคสที่ 1]: วาดในโซนพอดีเป๊ะ -> ไปเช็ค Attributes (Regulation) ต่อ
         const heightMax = matchedZone.zoneType?.attributes?.HeightMax;
+        const coverageMax = matchedZone.zoneType?.attributes?.CoverageMax;
+        const farMax = matchedZone.zoneType?.attributes?.FARMax;
         console.log(`[PASS] ตึกวาดอยู่ภายในโซนสมบูรณ์ ความสูงจำกัดคือ ${heightMax} เมตร`);
         
         // TODO: เช็ค Regulation เช่น ความสูงเกินไหม
@@ -151,13 +153,18 @@ export class App implements OnInit {
               status: "error",
               message: `ความสูงเกิน! ความสูงต้องไม่เกิน ${heightMax} เมตร`
             }
-        } else {
-            console.log("-> ✅ ความสูงผ่าน สร้างได้!");
-            return {
-              status: "success",
-              message: "สร้างสำเร็จ!"
-            }
         }
+        
+        
+        console.log("COVERAGE", coverageMax);
+        console.log("FARMAX", farMax);
+        console.log("activeGraphic", this.activeGraphic);
+        console.log("-> ผ่านทุกเงื่อนไข ! สร้างสำเร็จ !");
+        return {
+          status: "success",
+          message: "สร้างสำเร็จ!"
+        }
+        
 
     } else if (isPartiallyIntersecting) {
         // [เคสที่ 2]: วาดทับโซนนะ แต่มีส่วนที่ล้นออกมานอกขอบเขตโซน
@@ -653,6 +660,7 @@ export class App implements OnInit {
                         attributes {
                             HeightMax
                             CoverageMax
+                            FARMax
                         }
                     }
                 }
