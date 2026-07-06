@@ -162,12 +162,12 @@ export class App implements OnInit {
     }
 
     // ปริ้นท์ค่าออกมาดู
-    if (matchedParcel) {
-        console.log("📍 แปลงที่ดินปัจจุบัน (Parcel):", matchedParcel);
-        console.log("ข้อมูลพื้นที่ Area:", matchedParcel.attributes?.Area);
-    } else {
-        console.log("📍 ไม่พบแปลงที่ดินบริเวณที่วาด (วาดนอกเขต)");
-    }
+    // if (matchedParcel) {
+    //     console.log("📍 แปลงที่ดินปัจจุบัน (Parcel):", matchedParcel);
+    //     console.log("ข้อมูลพื้นที่ Area:", matchedParcel.attributes?.Area);
+    // } else {
+    //     console.log("📍 ไม่พบแปลงที่ดินบริเวณที่วาด (วาดนอกเขต)");
+    // }
 
     // --- สรุปผลลัพธ์ ---
     if (isFullyInsideSomeZone && matchedZone) {
@@ -189,8 +189,26 @@ export class App implements OnInit {
         
         // console.log("COVERAGE", coverageMax);
         // console.log("FARMAX", farMax);
-        console.log("MatchedZone", matchedZone);
         
+      
+        // check regulation coverage
+        const spaceUse = Math.round(geometryEngine.geodesicArea(buildingGeometry, "square-meters"))
+        const spaceAllow = Math.round(matchedParcel.attributes?.Area * coverageMax)
+        const currentCoverage = (spaceUse / spaceAllow) * (coverageMax*100)
+        const maxCoverage = coverageMax*100
+        if (currentCoverage >= maxCoverage) {
+          return {
+            status: "error",
+            message: "Coverage มากเกินไป กรุณาลดขนาดตึก !"
+          }
+        }
+
+        // check regulation far
+        
+
+
+
+        // ผ่านทุกกรณี
         console.log("-> ผ่านทุกเงื่อนไข ! สร้างสำเร็จ !");
         return {
           status: "success",
