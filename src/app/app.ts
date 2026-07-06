@@ -41,6 +41,7 @@ export class App implements OnInit {
   originalHeight: number = 30;
   
   zonesData: any[] = []; // เก็บข้อมูล zone ที่ดึงมาจาก API
+  parcelsData: any[] = []; // เก็บข้อมูล parcel ที่ดึงมาจาก API
   activeSpaceGlobalIDs: string[] = []; // เก็บ GlobalID ของ spaces ตอนคลิกเลือกตึก
   
   graphicsLayer = new GraphicsLayer({
@@ -49,6 +50,11 @@ export class App implements OnInit {
     }
   });
   zoneGraphicsLayer = new GraphicsLayer({
+    elevationInfo: {
+      mode: "on-the-ground"
+    }
+  });
+  parcelGraphicsLayer = new GraphicsLayer({
     elevationInfo: {
       mode: "on-the-ground"
     }
@@ -156,9 +162,10 @@ export class App implements OnInit {
         }
         
         
-        console.log("COVERAGE", coverageMax);
-        console.log("FARMAX", farMax);
-        console.log("activeGraphic", this.activeGraphic);
+        // console.log("COVERAGE", coverageMax);
+        // console.log("FARMAX", farMax);
+        console.log("MatchedZone", matchedZone);
+        
         console.log("-> ผ่านทุกเงื่อนไข ! สร้างสำเร็จ !");
         return {
           status: "success",
@@ -433,6 +440,7 @@ export class App implements OnInit {
 
     if (this.sceneComponent.map){
       this.sceneComponent.map.add(this.zoneGraphicsLayer); // แยก Layer สำหรับแสดงโซนเฉยๆ ไม่ให้ขยับได้
+      this.sceneComponent.map.add(this.parcelGraphicsLayer); // Layer สำหรับแสดงแปลงที่ดิน
       this.sceneComponent.map.add(this.graphicsLayer);
     }
 
@@ -561,6 +569,32 @@ export class App implements OnInit {
     console.log("Draw zoning polygon success!");
   }
 
+  drawParcelPolygon(geometry: any) {
+    if (!geometry || !geometry.rings) return;
+
+    const polygon = new Polygon({
+      rings: geometry.rings,
+      spatialReference: geometry.spatialReference || { wkid: 3857 }
+    });
+
+    const fillSymbol = new SimpleFillSymbol({
+      color: [255, 255, 255, 0], // สีโปร่งใส
+      outline: {
+        color: [255, 165, 0, 1], // สีส้ม (Orange)
+        width: 3,
+        style: "short-dash"
+      }
+    });
+
+    const graphic = new Graphic({
+      geometry: polygon,
+      symbol: fillSymbol
+    });
+
+    this.parcelGraphicsLayer.add(graphic);
+    console.log("Draw parcel polygon success!");
+  }
+
   renderExistingBuilding(geometry: any, height: number, spaceGlobalIDs: string[] = []) {
     if (!geometry || !geometry.rings) return;
 
@@ -638,6 +672,12 @@ export class App implements OnInit {
                     BranchName
                 }
                 parcels{
+                    geometry {
+                        rings
+                    }
+                    attributes {
+                        Area
+                    }
                     spaces {
                         attributes {
                             GlobalID
@@ -701,6 +741,8 @@ export class App implements OnInit {
             const parcels = branch.parcels;
             if (parcels && parcels.length > 0) {
               parcels.forEach((parcel: any) => {
+                this.parcelsData.push(parcel); // เก็บ parcel ไว้เช็ค FAR
+                this.drawParcelPolygon(parcel.geometry); // วาดแนวเขตแปลงที่ดิน
                 const spaces = parcel.spaces;
                 if (spaces && spaces.length > 0) {
                   this.createSpace(spaces);
