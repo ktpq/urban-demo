@@ -370,13 +370,13 @@ export class App implements OnInit {
                 }
             },
             attributes: {
-                ParcelID: "9d7bfb92-96b6-4b7e-b840-aeb93d5ae5a6",
+                ParcelID: "a81daa5f-7c80-45aa-a486-e28ec5958d39",
                 SpaceType: "Building",
                 SpaceUseTypeID: "15585cae-fec0-4050-8ecc-dd2f6619d5a6",
                 FloorHeight: this.buildingHeight,
                 BuildingNumber: 1,
                 FloorNumber: 1,
-                BranchID:"95d8c735-991b-436f-ae2b-461c82deaee1"
+                BranchID:"9dfb4d30-aa28-4c36-bc9f-c8409ff4cb30"
             }
         }
    ]
@@ -409,9 +409,9 @@ export class App implements OnInit {
     `;
 
     const polygon = this.activeGraphic.geometry as any;
-    const rings3D = polygon.rings.map((ring: any[]) =>
-      ring.map((pt: any[]) => pt.length === 2 ? [pt[0], pt[1], 0] : pt)
-    );
+    // const rings3D = polygon.rings.map((ring: any[]) =>
+    //   ring.map((pt: any[]) => pt.length === 2 ? [pt[0], pt[1], 0] : pt)
+    // );
 
     // สร้าง Array ของ spaces ที่ต้อง update (ทุกชั้นที่อยู่ในตึกเดียวกัน)
     const updateSpacesData = this.activeSpaceGlobalIDs.map((gid: string) => ({
@@ -420,7 +420,7 @@ export class App implements OnInit {
         FloorHeight: this.buildingHeight
       },
       geometry: {
-        rings: rings3D,
+        rings: polygon.rings,
         spatialReference: { wkid: 3857 }
       }
     }));
@@ -709,17 +709,19 @@ export class App implements OnInit {
       query {
     urbanDesignDatabase(urbanDesignDatabaseId: "057f8a4e29d94c8188f1eb4e08190931"){
         plans{
-            branches(filter: {globalIDs: "95d8c735-991b-436f-ae2b-461c82deaee1"}){
+            branches(filter: {globalIDs: "9dfb4d30-aa28-4c36-bc9f-c8409ff4cb30"}){
                 attributes {
                     GlobalID
                     BranchName
                 }
                 parcels{
+
                     geometry {
                         rings
                     }
                     attributes {
                         Area
+                        GlobalID
                     }
                     spaces {
                         attributes {
