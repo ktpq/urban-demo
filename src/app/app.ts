@@ -144,6 +144,31 @@ export class App implements OnInit {
         }
     }
 
+    // ค้นหาแปลงที่ดิน (Parcel) ที่ตึกกำลังวาดทับอยู่
+    let matchedParcel = null;
+    for (let parcel of this.parcelsData) {
+        if (!parcel.geometry || !parcel.geometry.rings) continue;
+        
+        const parcelPolygon = new Polygon({
+            rings: parcel.geometry.rings,
+            spatialReference: parcel.geometry.spatialReference || { wkid: 3857 }
+        });
+
+        // ถ้าตึกวาดอยู่ในที่ดินแปลงนี้
+        if (geometryEngine.within(buildingGeometry, parcelPolygon)) {
+            matchedParcel = parcel;
+            break;
+        }
+    }
+
+    // ปริ้นท์ค่าออกมาดู
+    if (matchedParcel) {
+        console.log("📍 แปลงที่ดินปัจจุบัน (Parcel):", matchedParcel);
+        console.log("ข้อมูลพื้นที่ Area:", matchedParcel.attributes?.Area);
+    } else {
+        console.log("📍 ไม่พบแปลงที่ดินบริเวณที่วาด (วาดนอกเขต)");
+    }
+
     // --- สรุปผลลัพธ์ ---
     if (isFullyInsideSomeZone && matchedZone) {
         // [เคสที่ 1]: วาดในโซนพอดีเป๊ะ -> ไปเช็ค Attributes (Regulation) ต่อ
