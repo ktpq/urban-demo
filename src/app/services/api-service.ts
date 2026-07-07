@@ -116,6 +116,49 @@ export class ApiService {
 
     return this.executeGraphQL(mutationQuery, mutationVariables);
   }
+
+  updateSpace(updateSpacesData: any[]) {
+    const mutationQuery = `
+      mutation UpdateSpace($urbanDesignDatabaseId: PortalItemId!, $updateSpaces: [UpdateSpaceInput!]!) {
+        updateSpaces(urbanDatabaseId: $urbanDesignDatabaseId, spaces: $updateSpaces) {
+          attributes {
+            GlobalID
+            BranchID
+          }
+        }
+      }
+    `;
+    
+    const mutationVariables = {
+      urbanDesignDatabaseId: "057f8a4e29d94c8188f1eb4e08190931",
+      updateSpaces: updateSpacesData
+    };
+
+    return this.executeGraphQL(mutationQuery, mutationVariables);
+  }
+
+  deleteSpace(globalIDs: string[]) {
+    const mutationQuery = `
+          mutation DeleteSpace($urbanDatabaseId: PortalItemId!, $globalIDs: [GlobalID!]!) {
+            deleteSpaces(
+              urbanDatabaseId: $urbanDatabaseId, 
+              globalIDs: $globalIDs, 
+              cascade: true
+            ) {
+              attributes {
+                GlobalID
+              }
+            }
+          }
+        `;
+    
+        const mutationVariables = {
+          urbanDatabaseId: "057f8a4e29d94c8188f1eb4e08190931",
+          globalIDs: globalIDs
+        };
+
+        return this.executeGraphQL(mutationQuery, mutationVariables);
+  }
   executeGraphQL(query: string, variables: any = {}): Observable<any> {
     const headers = new HttpHeaders({
       "X-Esri-Authorization": `Bearer ${environment.urbanApiKey}`,

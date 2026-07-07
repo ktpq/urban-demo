@@ -339,7 +339,8 @@ export class App implements OnInit {
 
     
 
-    const polygon = this.activeGraphic.geometry as any;
+    const graphicToUpdate = this.activeGraphic; // จำกราฟิกตัวนี้ไว้ก่อน
+    const polygon = graphicToUpdate.geometry as any;
 
     // แปลง 2D ให้กลายเป็น 3D (เติม 0 ต่อท้าย) เพื่อป้องกัน Error: z value is required
     const rings3D = polygon.rings.map((ring: any[]) => 
@@ -348,11 +349,19 @@ export class App implements OnInit {
     // const rings3D = polygon.rings.map((ring: any[]) => 
     //   ring.map((pt: any[]) => pt.length === 2 ? [pt[0], pt[1], 30] : pt)
     // );
-    
+
     this.apiService.createSpace(rings3D, this.buildingHeight).subscribe({
       next: (response) => {
         console.log("=== สร้างตึก LOD1 สำเร็จ! ===");
         console.log(response);
+
+        // SOLUTION แบบ Minimal: เอา GlobalID ที่ได้กลับมา ยัดใส่ Graphic ตัวเดิม
+        const createdSpaces = response?.data?.createSpaces;
+        if (createdSpaces && createdSpaces.length > 0) {
+            const newIDs = createdSpaces.map((space: any) => space.attributes.GlobalID);
+            if (!graphicToUpdate.attributes) graphicToUpdate.attributes = {};
+            graphicToUpdate.attributes.spaceGlobalIDs = newIDs;
+        }
       },
       error: (err) => {
         console.error("เกิดข้อผิดพลาดในการสร้างตึก:", err);
@@ -362,24 +371,7 @@ export class App implements OnInit {
 
   updateMutationBuilding() {
     if (!this.activeGraphic || this.activeSpaceGlobalIDs.length === 0) return;
-
-    const mutationQuery = `
-      mutation UpdateSpace($urbanDesignDatabaseId: PortalItemId!, $updateSpaces: [UpdateSpaceInput!]!) {
-        updateSpaces(urbanDatabaseId: $urbanDesignDatabaseId, spaces: $updateSpaces) {
-          attributes {
-            GlobalID
-            BranchID
-          }
-        }
-      }
-    `;
-
     const polygon = this.activeGraphic.geometry as any;
-    // const rings3D = polygon.rings.map((ring: any[]) =>
-    //   ring.map((pt: any[]) => pt.length === 2 ? [pt[0], pt[1], 0] : pt)
-    // );
-
-    // สร้าง Array ของ spaces ที่ต้อง update (ทุกชั้นที่อยู่ในตึกเดียวกัน)
     const updateSpacesData = this.activeSpaceGlobalIDs.map((gid: string) => ({
       attributes: {
         GlobalID: gid,
@@ -391,13 +383,8 @@ export class App implements OnInit {
       }
     }));
 
-    const mutationVariables = {
-      urbanDesignDatabaseId: "057f8a4e29d94c8188f1eb4e08190931",
-      updateSpaces: updateSpacesData
-    };
-
-    console.log("=== Sending Update Mutation ===", mutationVariables);
-    this.apiService.executeGraphQL(mutationQuery, mutationVariables).subscribe({
+    
+    this.apiService.updateSpace(updateSpacesData).subscribe({
       next: (response) => {
         console.log("=== อัปเดตตึกสำเร็จ! ===");
         console.log(response);
@@ -411,27 +398,8 @@ export class App implements OnInit {
   deleteMutationBuilding(globalIDs: string[]) {
     if (!globalIDs || globalIDs.length === 0) return;
 
-    const mutationQuery = `
-      mutation DeleteSpace($urbanDatabaseId: PortalItemId!, $globalIDs: [GlobalID!]!) {
-        deleteSpaces(
-          urbanDatabaseId: $urbanDatabaseId, 
-          globalIDs: $globalIDs, 
-          cascade: true
-        ) {
-          attributes {
-            GlobalID
-          }
-        }
-      }
-    `;
-
-    const mutationVariables = {
-      urbanDatabaseId: "057f8a4e29d94c8188f1eb4e08190931",
-      globalIDs: globalIDs
-    };
-
-    console.log("=== Sending Delete Mutation ===", mutationVariables);
-    this.apiService.executeGraphQL(mutationQuery, mutationVariables).subscribe({
+    
+    this.apiService.deleteSpace(globalIDs).subscribe({
       next: (response) => {
         console.log("=== ลบตึกออกจากระบบสำเร็จ! ===");
         console.log(response);
