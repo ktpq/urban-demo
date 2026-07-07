@@ -75,11 +75,14 @@ export class App implements OnInit {
 
     // อัปเดตความสูงของตึกที่ถูกคลิกเลือกอยู่ (ถ้ามี)
     if (this.activeGraphic) {
+      const numFloors = this.activeSpacesSignal().length > 0 ? this.activeSpacesSignal().length : 1;
+      const totalHeight = this.buildingHeight * numFloors; // ความสูงรวม = ความสูงต่อชั้น * จำนวนชั้น
+
       this.activeGraphic.symbol = new PolygonSymbol3D({
         symbolLayers: [
           new ExtrudeSymbol3DLayer({
-            size: this.buildingHeight,
-            material: { color: "#ffffff" }
+            size: totalHeight,
+            material: { color: "#ffffff" },
           })
         ]
       });
@@ -371,18 +374,44 @@ export class App implements OnInit {
   }
 
   updateMutationBuilding() {
-    if (!this.activeGraphic || this.activeSpaceGlobalIDs.length === 0) return;
+    const spacesData = this.activeSpacesSignal();
+    if (!this.activeGraphic || spacesData.length === 0) return;
+    
     const polygon = this.activeGraphic.geometry as any;
-    const updateSpacesData = this.activeSpaceGlobalIDs.map((gid: string) => ({
-      attributes: {
-        GlobalID: gid,
-        FloorHeight: this.buildingHeight
-      },
-      geometry: {
-        rings: polygon.rings,
-        spatialReference: { wkid: 3857 }
-      }
-    }));
+    const baseRings = polygon.rings;
+
+    // เรียงชั้นตาม FloorNumber จากน้อยไปมาก
+    const sortedSpaces = [...spacesData].sort((a, b) => a.attributes.FloorNumber - b.attributes.FloorNumber);
+    
+    // หา baseZ (ความสูงที่ฐานของชั้นล่างสุด)
+    const firstSpaceOrigRings = sortedSpaces[0].geometry?.rings;
+    const baseZ = (firstSpaceOrigRings && firstSpaceOrigRings[0] && firstSpaceOrigRings[0][0] && firstSpaceOrigRings[0][0].length >= 3) 
+                    ? firstSpaceOrigRings[0][0][2] 
+                    : 0;
+
+    const updateSpacesData = sortedSpaces.map((space: any, index: number) => {
+      const gid = space.attributes.GlobalID;
+      
+      // คำนวณแกน Z ใหม่: ฐาน + (ความสูงต่อชั้น * ลำดับชั้น)
+      // (index 0 คือชั้น 1 จะได้ Z = baseZ)
+      const newZ = baseZ + (index * this.buildingHeight);
+
+      // สร้าง rings ใหม่ ให้เอา XY จาก polygon ที่แก้เสร็จ และยัด Z ใหม่ที่คำนวณได้
+      const rings3D = baseRings.map((ring: any[]) => 
+        ring.map((pt: any[]) => [pt[0], pt[1], newZ])
+      );
+
+      return {
+        attributes: {
+          GlobalID: gid,
+          FloorHeight: this.buildingHeight // อัปเดตความสูงต่อชั้นเป็นค่าใหม่ตามที่ปรับในหน้าเว็บ
+        },
+        geometry: {
+          rings: rings3D,
+          spatialReference: { wkid: 3857 }
+        }
+      };
+    });
 
     
     this.apiService.updateSpace(updateSpacesData).subscribe({
