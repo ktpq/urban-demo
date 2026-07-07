@@ -8,6 +8,12 @@ import { environment } from '../../environments/environment.development';
   providedIn: 'root',
 })
 export class ApiService {
+
+  urbanDesignDatabaseId:string = "057f8a4e29d94c8188f1eb4e08190931";
+  branchId: string = "9dfb4d30-aa28-4c36-bc9f-c8409ff4cb30";
+  parcelId: string = "753027a8-97d0-444a-9642-0e378866f2d7";
+  spaceUseTypeId: string = "15585cae-fec0-4050-8ecc-dd2f6619d5a6";
+
   constructor(private http: HttpClient) {}
 
   /**
@@ -18,10 +24,10 @@ export class ApiService {
 
   onWebLoad(){
     const myQuery = `
-      query {
-    urbanDesignDatabase(urbanDesignDatabaseId: "057f8a4e29d94c8188f1eb4e08190931"){
+      query WebLoad($urbanDesignDatabaseId: PortalItemId!, $branchId: [GlobalID!]){
+    urbanDesignDatabase(urbanDesignDatabaseId: $urbanDesignDatabaseId){
         plans{
-            branches(filter: {globalIDs: "9dfb4d30-aa28-4c36-bc9f-c8409ff4cb30"}){
+            branches(filter: {globalIDs: $branchId}){
                 attributes {
                     GlobalID
                     BranchName
@@ -71,7 +77,8 @@ export class ApiService {
 
     `;
     const myVariables = {
-      id: "ec88218ad29b4f5c919de98764259515"
+      urbanDesignDatabaseId: this.urbanDesignDatabaseId,
+      branchId: [this.branchId] // เปลี่ยนเป็น Array เพราะ filter: globalIDs รับเป็น Array
     };
     return this.executeGraphQL(myQuery, myVariables)
   }
@@ -92,7 +99,7 @@ export class ApiService {
         }
         `;
     const mutationVariables = {
-        urbanDesignDatabaseId: "057f8a4e29d94c8188f1eb4e08190931",
+        urbanDesignDatabaseId: this.urbanDesignDatabaseId,
         newSpace: [
             {
                 geometry: {
@@ -102,13 +109,13 @@ export class ApiService {
                     }
                 },
                 attributes: {
-                    ParcelID: "753027a8-97d0-444a-9642-0e378866f2d7",
+                    ParcelID: this.parcelId,
                     SpaceType: "Building",
-                    SpaceUseTypeID: "15585cae-fec0-4050-8ecc-dd2f6619d5a6",
+                    SpaceUseTypeID: this.spaceUseTypeId,
                     FloorHeight: buildingHeight,
                     BuildingNumber: 1,
                     FloorNumber: 1,
-                    BranchID:"9dfb4d30-aa28-4c36-bc9f-c8409ff4cb30"
+                    BranchID: this.branchId
                 }
             }
             ]
@@ -130,7 +137,7 @@ export class ApiService {
     `;
     
     const mutationVariables = {
-      urbanDesignDatabaseId: "057f8a4e29d94c8188f1eb4e08190931",
+      urbanDesignDatabaseId: this.urbanDesignDatabaseId,
       updateSpaces: updateSpacesData
     };
 
@@ -153,7 +160,7 @@ export class ApiService {
         `;
     
         const mutationVariables = {
-          urbanDatabaseId: "057f8a4e29d94c8188f1eb4e08190931",
+          urbanDatabaseId: this.urbanDesignDatabaseId,
           globalIDs: globalIDs
         };
 
