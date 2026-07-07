@@ -2,7 +2,7 @@ import '@arcgis/map-components/components/arcgis-map';
 import "@arcgis/map-components/components/arcgis-scene";
 import "@arcgis/map-components/components/arcgis-sketch";
 
-import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, ChangeDetectorRef, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 import { ApiService } from './services/api-service';
@@ -43,6 +43,7 @@ export class App implements OnInit {
   zonesData: any[] = []; // เก็บข้อมูล zone ที่ดึงมาจาก API
   parcelsData: any[] = []; // เก็บข้อมูล parcel ที่ดึงมาจาก API
   activeSpaceGlobalIDs: string[] = []; // เก็บ GlobalID ของ spaces ตอนคลิกเลือกตึก
+  activeSpacesSignal = signal<any[]>([]); // Signal แบบ Global เอาไว้ใช้งานจาก Component หรือ Template ง่ายๆ
   
   graphicsLayer = new GraphicsLayer({
     elevationInfo: {
@@ -359,6 +360,8 @@ export class App implements OnInit {
             const newIDs = createdSpaces.map((space: any) => space.attributes.GlobalID);
             if (!graphicToUpdate.attributes) graphicToUpdate.attributes = {};
             graphicToUpdate.attributes.spaceGlobalIDs = newIDs;
+            graphicToUpdate.attributes.spacesData = createdSpaces; // บันทึก space คืนกลับไปที่ graphic ทันที
+            this.activeSpacesSignal.set(createdSpaces); // ยัดข้อมูลใส่ Signal
         }
       },
       error: (err) => {
@@ -475,6 +478,12 @@ export class App implements OnInit {
           // เก็บ GlobalID ของ spaces ไว้ใช้ตอนยิง updateMutation
           const attrs = this.activeGraphic.attributes;
           this.activeSpaceGlobalIDs = attrs?.spaceGlobalIDs || [];
+          
+          // เก็บข้อมูล spaces และปริ้นออกมาดูตามที่ user ต้องการ
+          const activeSpacesData = attrs?.spacesData || [];
+          this.activeSpacesSignal.set(activeSpacesData); // อัปเดต signal
+          console.log("=== ข้อมูล Space ของตึกที่ถูกเลือก ===");
+          console.log(this.activeSpacesSignal());
         }
       }
 
@@ -483,6 +492,7 @@ export class App implements OnInit {
         this.isBoxSelected = false;
         this.activeGraphic = null;
         this.activeSpaceGlobalIDs = [];
+        this.activeSpacesSignal.set([]); // รีเซ็ต signal ให้ว่าง
         this.buildingHeight = this.DEFAULT_HEIGHT;
         this.updateSketchSymbol();
         this.cdr.detectChanges();
@@ -570,7 +580,7 @@ export class App implements OnInit {
     console.log("Draw parcel polygon success!");
   }
 
-  renderExistingBuilding(geometry: any, height: number, spaceGlobalIDs: string[] = []) {
+  renderExistingBuilding(geometry: any, height: number, spaceGlobalIDs: string[] = [], spacesData: any[] = []) {
     if (!geometry || !geometry.rings) return;
 
     const polygon = new Polygon({
@@ -591,7 +601,8 @@ export class App implements OnInit {
       geometry: polygon,
       symbol: polygonSymbol,
       attributes: {
-        spaceGlobalIDs: spaceGlobalIDs
+        spaceGlobalIDs: spaceGlobalIDs,
+        spacesData: spacesData
       }
     });
 
@@ -601,7 +612,7 @@ export class App implements OnInit {
 
   createSpace(spaces: any[]) {
     // สร้างตัวแปรเก็บข้อมูลเพื่อรวมตึกที่มีพิกัดแกน X, Y ตรงกัน (ตึกเดียวกันแต่คนละชั้น)
-    const buildingMap = new Map<string, { geometry: any, totalHeight: number, spaceGlobalIDs: string[] }>();
+    const buildingMap = new Map<string, { geometry: any, totalHeight: number, spaceGlobalIDs: string[], spacesData: any[] }>();
 
     spaces.forEach((space: any) => {
       const rings = space.geometry?.rings;
@@ -618,12 +629,14 @@ export class App implements OnInit {
         // ถ้าเคยเจอแล้ว ให้เอาความสูงชั้นใหม่บวกเพิ่มเข้าไป
         buildingMap.get(footprintKey)!.totalHeight += floorHeight;
         if (gid) buildingMap.get(footprintKey)!.spaceGlobalIDs.push(gid);
+        buildingMap.get(footprintKey)!.spacesData.push(space);
       } else {
         // ถ้าเพิ่งเจอครั้งแรก ให้จำ geometry และความสูงไว้
         buildingMap.set(footprintKey, {
           geometry: space.geometry,
           totalHeight: floorHeight,
-          spaceGlobalIDs: gid ? [gid] : []
+          spaceGlobalIDs: gid ? [gid] : [],
+          spacesData: [space]
         });
       }
     });
@@ -631,7 +644,7 @@ export class App implements OnInit {
     // เอาตึกที่จัดกลุ่มและรวมความสูงแล้วไปวาด
     buildingMap.forEach((building) => {
        const finalHeight = building.totalHeight > 0 ? building.totalHeight : 30; // ถ้าไม่มีความสูงเลยให้เป็น 30
-       this.renderExistingBuilding(building.geometry, finalHeight, building.spaceGlobalIDs);
+       this.renderExistingBuilding(building.geometry, finalHeight, building.spaceGlobalIDs, building.spacesData);
     });
   }
 
