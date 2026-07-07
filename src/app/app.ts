@@ -370,7 +370,7 @@ export class App implements OnInit {
                 }
             },
             attributes: {
-                ParcelID: "a81daa5f-7c80-45aa-a486-e28ec5958d39",
+                ParcelID: "753027a8-97d0-444a-9642-0e378866f2d7",
                 SpaceType: "Building",
                 SpaceUseTypeID: "15585cae-fec0-4050-8ecc-dd2f6619d5a6",
                 FloorHeight: this.buildingHeight,
@@ -705,65 +705,7 @@ export class App implements OnInit {
 
   ngOnInit() {
     // ผู้เรียกใช้งานเป็นคนประกอบ Query ส่งไปเอง
-    const myQuery = `
-      query {
-    urbanDesignDatabase(urbanDesignDatabaseId: "057f8a4e29d94c8188f1eb4e08190931"){
-        plans{
-            branches(filter: {globalIDs: "9dfb4d30-aa28-4c36-bc9f-c8409ff4cb30"}){
-                attributes {
-                    GlobalID
-                    BranchName
-                }
-                parcels{
-
-                    geometry {
-                        rings
-                    }
-                    attributes {
-                        Area
-                        GlobalID
-                    }
-                    spaces {
-                        attributes {
-                            GlobalID
-                            FloorHeight
-                            FloorNumber
-                        }
-                        geometry {
-                            rings
-                        }
-                    }
-                }
-                zones {
-                    geometry {
-                        rings
-                        spatialReference {
-                            wkid
-                        }
-                    }
-                    zoneType {
-                        attributes {
-                            HeightMax
-                            CoverageMax
-                            FARMax
-                        }
-                    }
-                }
-            }
-            
-            
-        }
-
-    }
-}
-
-    `;
-
-    const myVariables = {
-      id: "ec88218ad29b4f5c919de98764259515"
-    };
-
-    this.apiService.executeGraphQL(myQuery, myVariables).subscribe({
+    this.apiService.onWebLoad().subscribe({
       next: (response) => {
         console.log("=== API Response ===");
         console.log(response);
