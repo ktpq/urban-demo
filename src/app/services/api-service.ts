@@ -114,7 +114,7 @@ export class ApiService {
                     SpaceUseTypeID: this.spaceUseTypeId,
                     FloorHeight: buildingHeight,
                     BuildingNumber: 1,
-                    FloorNumber: 1,
+                    FloorNumber: 0,
                     BranchID: this.branchId
                 }
             }

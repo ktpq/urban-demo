@@ -344,11 +344,9 @@ export class App implements OnInit {
 
     // แปลง 2D ให้กลายเป็น 3D (เติม 0 ต่อท้าย) เพื่อป้องกัน Error: z value is required
     const rings3D = polygon.rings.map((ring: any[]) => 
-      ring.map((pt: any[]) => pt.length === 3 ? [pt[0], pt[1], 10] : pt)
+      ring.map((pt: any[]) => pt.length === 3 ? [pt[0], pt[1], 9] : pt)
     );
-    // const rings3D = polygon.rings.map((ring: any[]) => 
-    //   ring.map((pt: any[]) => pt.length === 2 ? [pt[0], pt[1], 30] : pt)
-    // );
+
 
     this.apiService.createSpace(rings3D, this.buildingHeight).subscribe({
       next: (response) => {

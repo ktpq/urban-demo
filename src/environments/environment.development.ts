@@ -1,6 +1,6 @@
 export const environment = {
     production: false,
-    urbanApiKey: "aFZqogNYmtNH0ociHCLcjOg..Wln9gIcoH_xBcp77i7k1I6-xjippctwx1HRZNR65FrtWWGZqcOpuh32MizZJGd-wCm6zVfQd0qsUqPu0k0CoxVWzhLj2Thl7tyJv12wM_UBRxdG4JBhxqHdKKDbZ04PuNxprld8Zo7MmRbw.",
+    urbanApiKey: "a4hXLJgbOzZ_sM5CgWeg-uQ..ybYXwJvUWJALI4s01QJiKhnD7GkNuAM2CKjHBElfo6KuERuekq3KCpAIxfbuP6xkZG5x65BFe7UHI1UC-W_QvnkWH9_sVrsCePTyWxZumsoiUCGdP0Wk5jLdhGggFZI7fnYBN5gtOQXX8yk.",
     urbanApiUrl: "https://urban-api.arcgis.com/graphql",
 };
 
