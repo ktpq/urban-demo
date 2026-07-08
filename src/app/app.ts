@@ -75,13 +75,10 @@ export class App implements OnInit {
 
     // อัปเดตความสูงของตึกที่ถูกคลิกเลือกอยู่ (ถ้ามี)
     if (this.activeGraphic) {
-      const numFloors = this.activeSpacesSignal().length > 0 ? this.activeSpacesSignal().length : 1;
-      const totalHeight = this.buildingHeight * numFloors; // ความสูงรวม = ความสูงต่อชั้น * จำนวนชั้น
-
       this.activeGraphic.symbol = new PolygonSymbol3D({
         symbolLayers: [
           new ExtrudeSymbol3DLayer({
-            size: totalHeight,
+            size: this.buildingHeight,
             material: { color: "#ffffff" },
           })
         ]
@@ -92,6 +89,57 @@ export class App implements OnInit {
   addFloor() {
     console.log("=== Add Floor ===");
     console.log(this.activeSpacesSignal());
+    
+    // defined varialbles
+    const graphicToUpdate = this.activeGraphic;
+    const attr = this.activeSpacesSignal().at(-1).attributes;
+    const geometry = this.activeSpacesSignal().at(-1).geometry;
+    console.log("active graphic eiei", this.activeGraphic)
+    const floorHeight = attr.FloorHeight;
+    const floorNumber = attr.FloorNumber + 1;
+
+    const rings3D = geometry.rings.map((ring: any[]) => 
+      ring.map((pt: any[]) => pt.length === 3 ? [pt[0], pt[1], pt[2]+floorHeight] : pt)
+    );
+
+    this.apiService.createSpace(rings3D, floorHeight, floorNumber).subscribe({
+      next: (response) => {
+        console.log("=== อัพเดตตึก LOD1 สำเร็จ! ===");
+        console.log(response);
+
+        const createdSpaces = response?.data?.createSpaces;
+        if (createdSpaces && createdSpaces.length > 0) {
+            // 1. ดึงชั้นเดิมมาประกอบกับชั้นใหม่
+            const currentSpaces = this.activeSpacesSignal();
+            const allSpaces = [...currentSpaces, ...createdSpaces];
+
+            // 2. อัปเดตข้อมูลกลับไปที่ Graphic
+            const allIDs = allSpaces.map((space: any) => space.attributes.GlobalID);
+            if (!graphicToUpdate.attributes) graphicToUpdate.attributes = {};
+            graphicToUpdate.attributes.spaceGlobalIDs = allIDs;
+            graphicToUpdate.attributes.spacesData = allSpaces;
+            this.activeSpacesSignal.set(allSpaces);
+
+            // 3. อัปเดตความสูงของ Graphic (Visual Update) และ Input
+            const numFloors = allSpaces.length;
+            const totalHeight = floorHeight * numFloors;
+            this.buildingHeight = totalHeight; // อัปเดตค่าใน input ทันที
+            
+            graphicToUpdate.symbol = new PolygonSymbol3D({
+              symbolLayers: [
+                new ExtrudeSymbol3DLayer({
+                  size: totalHeight,
+                  material: { color: "#ffffff" },
+                })
+              ]
+            });
+        }
+      },
+      error: (err) => {
+        console.error("เกิดข้อผิดพลาดในการสร้างตึก:", err);
+      }
+    });
+    
   }
 
   removeFloor() {
@@ -358,11 +406,11 @@ export class App implements OnInit {
 
     // แปลง 2D ให้กลายเป็น 3D (เติม 0 ต่อท้าย) เพื่อป้องกัน Error: z value is required
     const rings3D = polygon.rings.map((ring: any[]) => 
-      ring.map((pt: any[]) => pt.length === 3 ? [pt[0], pt[1], 9] : pt)
+      ring.map((pt: any[]) => pt.length === 3 ? [pt[0], pt[1], 10] : pt)
     );
 
 
-    this.apiService.createSpace(rings3D, this.buildingHeight).subscribe({
+    this.apiService.createSpace(rings3D, this.buildingHeight, 0).subscribe({
       next: (response) => {
         console.log("=== สร้างตึก LOD1 สำเร็จ! ===");
         console.log(response);
@@ -392,6 +440,8 @@ export class App implements OnInit {
 
     // เรียงชั้นตาม FloorNumber จากน้อยไปมาก
     const sortedSpaces = [...spacesData].sort((a, b) => a.attributes.FloorNumber - b.attributes.FloorNumber);
+    const numFloors = sortedSpaces.length;
+    const newFloorHeight = this.buildingHeight / numFloors; // ความสูงต่อชั้น = ความสูงรวม / จำนวนชั้น
     
     // หา baseZ (ความสูงที่ฐานของชั้นล่างสุด)
     const firstSpaceOrigRings = sortedSpaces[0].geometry?.rings;
@@ -403,8 +453,7 @@ export class App implements OnInit {
       const gid = space.attributes.GlobalID;
       
       // คำนวณแกน Z ใหม่: ฐาน + (ความสูงต่อชั้น * ลำดับชั้น)
-      // (index 0 คือชั้น 1 จะได้ Z = baseZ)
-      const newZ = baseZ + (index * this.buildingHeight);
+      const newZ = baseZ + (index * newFloorHeight);
 
       // สร้าง rings ใหม่ ให้เอา XY จาก polygon ที่แก้เสร็จ และยัด Z ใหม่ที่คำนวณได้
       const rings3D = baseRings.map((ring: any[]) => 
@@ -414,7 +463,7 @@ export class App implements OnInit {
       return {
         attributes: {
           GlobalID: gid,
-          FloorHeight: this.buildingHeight // อัปเดตความสูงต่อชั้นเป็นค่าใหม่ตามที่ปรับในหน้าเว็บ
+          FloorHeight: newFloorHeight // อัปเดตความสูงต่อชั้นเป็นค่าใหม่ตามที่ปรับในหน้าเว็บ
         },
         geometry: {
           rings: rings3D,

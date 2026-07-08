@@ -83,7 +83,7 @@ export class ApiService {
     return this.executeGraphQL(myQuery, myVariables)
   }
 
-  createSpace(rings3D: any[], buildingHeight: number) {
+  createSpace(rings3D: any[], buildingHeight: number, floorNumber: number) {
     const mutationQuery = `
       mutation CreateSpace($urbanDesignDatabaseId: PortalItemId!, $newSpace: [CreateSpaceInput!]!){
             createSpaces(urbanDatabaseId: $urbanDesignDatabaseId, spaces: $newSpace){
@@ -116,7 +116,7 @@ export class ApiService {
                     SpaceUseTypeID: this.spaceUseTypeId,
                     FloorHeight: buildingHeight,
                     BuildingNumber: 1,
-                    FloorNumber: 0,
+                    FloorNumber: floorNumber,
                     BranchID: this.branchId
                 }
             }
