@@ -97,48 +97,62 @@ export class App implements OnInit {
     console.log("active graphic eiei", this.activeGraphic)
     const floorHeight = attr.FloorHeight;
     const floorNumber = attr.FloorNumber + 1;
-
+    
     const rings3D = geometry.rings.map((ring: any[]) => 
       ring.map((pt: any[]) => pt.length === 3 ? [pt[0], pt[1], pt[2]+floorHeight] : pt)
     );
 
-    this.apiService.createSpace(rings3D, floorHeight, floorNumber).subscribe({
-      next: (response) => {
-        console.log("=== อัพเดตตึก LOD1 สำเร็จ! ===");
-        console.log(response);
+    // จำลองค่าจำนวนชั้นและความสูงใหม่ที่จะเกิดขึ้น เพื่อส่งไปเช็ค Regulation ก่อน
+    const newNumFloors = this.activeSpacesSignal().length + 1;
+    const newTotalHeight = this.buildingHeight + floorHeight;
 
-        const createdSpaces = response?.data?.createSpaces;
-        if (createdSpaces && createdSpaces.length > 0) {
-            // 1. ดึงชั้นเดิมมาประกอบกับชั้นใหม่
-            const currentSpaces = this.activeSpacesSignal();
-            const allSpaces = [...currentSpaces, ...createdSpaces];
+    const checkResult = this.checkZoneRegulation(newNumFloors, newTotalHeight);
 
-            // 2. อัปเดตข้อมูลกลับไปที่ Graphic
-            const allIDs = allSpaces.map((space: any) => space.attributes.GlobalID);
-            if (!graphicToUpdate.attributes) graphicToUpdate.attributes = {};
-            graphicToUpdate.attributes.spaceGlobalIDs = allIDs;
-            graphicToUpdate.attributes.spacesData = allSpaces;
-            this.activeSpacesSignal.set(allSpaces);
+    if (checkResult!.status === "error"){
+      alert(checkResult!.message);
+      return; // ถ้ายอดเกิน ให้หยุดการทำงานทันที (ไม่สร้างชั้นใหม่)
+    } else {
+      alert(checkResult!.message);
+      this.apiService.createSpace(rings3D, floorHeight, floorNumber).subscribe({
+        next: (response) => {
+          console.log("=== อัพเดตตึก LOD1 สำเร็จ! ===");
+          console.log(response);
 
-            // 3. อัปเดตความสูงของ Graphic (Visual Update) และ Input
-            const numFloors = allSpaces.length;
-            const totalHeight = floorHeight * numFloors;
-            this.buildingHeight = totalHeight; // อัปเดตค่าใน input ทันที
-            
-            graphicToUpdate.symbol = new PolygonSymbol3D({
-              symbolLayers: [
-                new ExtrudeSymbol3DLayer({
-                  size: totalHeight,
-                  material: { color: "#ffffff" },
-                })
-              ]
-            });
+          const createdSpaces = response?.data?.createSpaces;
+          if (createdSpaces && createdSpaces.length > 0) {
+              // 1. ดึงชั้นเดิมมาประกอบกับชั้นใหม่
+              const currentSpaces = this.activeSpacesSignal();
+              const allSpaces = [...currentSpaces, ...createdSpaces];
+
+              // 2. อัปเดตข้อมูลกลับไปที่ Graphic
+              const allIDs = allSpaces.map((space: any) => space.attributes.GlobalID);
+              if (!graphicToUpdate.attributes) graphicToUpdate.attributes = {};
+              graphicToUpdate.attributes.spaceGlobalIDs = allIDs;
+              graphicToUpdate.attributes.spacesData = allSpaces;
+              this.activeSpacesSignal.set(allSpaces);
+
+              // 3. อัปเดตความสูงของ Graphic (Visual Update) และ Input
+              const numFloors = allSpaces.length;
+              const totalHeight = floorHeight * numFloors;
+              this.buildingHeight = totalHeight; // อัปเดตค่าใน input ทันที
+              
+              graphicToUpdate.symbol = new PolygonSymbol3D({
+                symbolLayers: [
+                  new ExtrudeSymbol3DLayer({
+                    size: totalHeight,
+                    material: { color: "#ffffff" },
+                  })
+                ]
+              });
+          }
+        },
+        error: (err) => {
+          console.error("เกิดข้อผิดพลาดในการสร้างตึก:", err);
         }
-      },
-      error: (err) => {
-        console.error("เกิดข้อผิดพลาดในการสร้างตึก:", err);
-      }
-    });
+      });
+    }
+
+    
     
   }
 
@@ -172,7 +186,7 @@ export class App implements OnInit {
     // this.zoneGraphicsLayer.removeAll();
   }
 
-  checkZoneRegulation() {
+  checkZoneRegulation(simulatedNumFloors?: number, simulatedTotalHeight?: number) {
     if (!this.activeGraphic) return;
     
     const buildingGeometry = this.activeGraphic.geometry; 
@@ -237,11 +251,32 @@ export class App implements OnInit {
         const heightMax = matchedZone.zoneType?.attributes?.HeightMax;
         const coverageMax = matchedZone.zoneType?.attributes?.CoverageMax;
         const farMax = matchedZone.zoneType?.attributes?.FARMax;
+
+        const spaceUse = Math.round(geometryEngine.geodesicArea(buildingGeometry, "square-meters"))
+        const spaceAllow = Math.round(matchedParcel.attributes?.Area * coverageMax)
+        const currentCoverage = Math.round((spaceUse / spaceAllow) * (coverageMax*100));
+        const maxCoverage = coverageMax*100
+
+        // ใช้จำนวนชั้นจำลอง (ถ้ามีส่งมา) หรือใช้ค่าปัจจุบัน
+        const numFloors = simulatedNumFloors ?? (this.activeSpacesSignal().length > 0 ? this.activeSpacesSignal().length : 1);
+        
+        const currentFar = (currentCoverage/100) * numFloors;
+        
         console.log(`[PASS] ตึกวาดอยู่ภายในโซนสมบูรณ์ ความสูงจำกัดคือ ${heightMax} เมตร`);
+
+        // check regulation far
+        
+        if (farMax !== undefined && currentFar > farMax) {
+          
+          return {
+            status: "error",
+            message: `FAR (${currentFar.toFixed(2)}) เกินกว่าที่กำหนด! (สูงสุด ${farMax}) กรุณาลดจำนวนชั้นหรือขนาดตึก`
+          }
+        }
         
         // TODO: เช็ค Regulation เช่น ความสูงเกินไหม
-        if (heightMax !== undefined && this.buildingHeight > heightMax) {
-            console.log("-> ❌ แต่ความสูงเกิน!");
+        const checkHeight = simulatedTotalHeight ?? this.buildingHeight;
+        if (heightMax !== undefined && checkHeight > heightMax) {
             return {
               status: "error",
               message: `ความสูงเกิน! ความสูงต้องไม่เกิน ${heightMax} เมตร`
@@ -249,15 +284,8 @@ export class App implements OnInit {
         }
         
         
-        // console.log("COVERAGE", coverageMax);
-        // console.log("FARMAX", farMax);
-        
-      
         // check regulation coverage
-        const spaceUse = Math.round(geometryEngine.geodesicArea(buildingGeometry, "square-meters"))
-        const spaceAllow = Math.round(matchedParcel.attributes?.Area * coverageMax)
-        const currentCoverage = Math.round((spaceUse / spaceAllow) * (coverageMax*100));
-        const maxCoverage = coverageMax*100
+        
         if (currentCoverage >= maxCoverage) {
           return {
             status: "error",
@@ -265,9 +293,10 @@ export class App implements OnInit {
           }
         }
 
-        // check regulation far
         
-
+        console.log("FAR: ", currentFar, farMax);
+        console.log("Height: ", this.buildingHeight, heightMax)
+        console.log("Coverage: ", currentCoverage, maxCoverage);
 
 
         // ผ่านทุกกรณี
