@@ -158,7 +158,51 @@ export class App implements OnInit {
 
   removeFloor() {
     console.log("=== Remove Floor ===");
-    console.log(this.activeSpacesSignal());
+    
+    const currentSpaces = this.activeSpacesSignal();
+    // ถ้าเหลือชั้นเดียว ไม่ให้ลบ
+    if (currentSpaces.length <= 1) {
+        alert("ไม่สามารถลบชั้นสุดท้ายได้ครับ!");
+        return;
+    }
+
+    const graphicToUpdate = this.activeGraphic;
+    if (!graphicToUpdate) return;
+
+    // หาชั้นบนสุด (ตัวสุดท้ายใน array)
+    const topFloor = currentSpaces[currentSpaces.length - 1];
+    const topFloorGlobalID = topFloor.attributes.GlobalID;
+    const floorHeight = topFloor.attributes.FloorHeight;
+
+    this.apiService.deleteSpace([topFloorGlobalID]).subscribe({
+      next: (response) => {
+        alert("ลบชั้นสำเร็จ!")
+        
+        // 1. ตัดชั้นบนสุดออก
+        const updatedSpaces = currentSpaces.slice(0, -1);
+        
+        // 2. อัปเดตข้อมูลกลับไปที่ Graphic และ Signal
+        const allIDs = updatedSpaces.map((space: any) => space.attributes.GlobalID);
+        graphicToUpdate.attributes.spaceGlobalIDs = allIDs;
+        graphicToUpdate.attributes.spacesData = updatedSpaces;
+        this.activeSpacesSignal.set(updatedSpaces);
+
+        // 3. อัปเดตความสูงของ Graphic (Visual Update) และ Input
+        this.buildingHeight = this.buildingHeight - floorHeight; // ลดความสูงรวมลง
+        
+        graphicToUpdate.symbol = new PolygonSymbol3D({
+          symbolLayers: [
+            new ExtrudeSymbol3DLayer({
+              size: this.buildingHeight,
+              material: { color: "#ffffff" },
+            })
+          ]
+        });
+      },
+      error: (err) => {
+        console.error("เกิดข้อผิดพลาดในการลบชั้น:", err);
+      }
+    });
   }
 
   // อัปเดตสัญลักษณ์เวลาเปลี่ยนความสูง
