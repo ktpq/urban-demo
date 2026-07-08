@@ -39,6 +39,13 @@ export class App implements OnInit {
   // สำหรับจดจำค่าก่อนทำการอัปเดต เพื่อย้อนกลับเมื่อผิดเงื่อนไข
   originalGeometry: any = null;
   originalHeight: number = 30;
+
+  // ตัวแปรสำหรับโชว์ข้อมูล FAR/Coverage/Height แบบเรียลไทม์
+  currentFAR: number = 0;
+  maxFAR: number = 0;
+  currentCoverage: number = 0;
+  maxCoverage: number = 0;
+  maxHeight: number = 0;
   
   zonesData: any[] = []; // เก็บข้อมูล zone ที่ดึงมาจาก API
   parcelsData: any[] = []; // เก็บข้อมูล parcel ที่ดึงมาจาก API
@@ -144,6 +151,9 @@ export class App implements OnInit {
                   })
                 ]
               });
+
+              // อัปเดต stats เรียลไทม์ (FAR จะเปลี่ยนตามจำนวนชั้นใหม่)
+              this.updateRealtimeStats(graphicToUpdate);
           }
         },
         error: (err) => {
@@ -198,6 +208,9 @@ export class App implements OnInit {
             })
           ]
         });
+
+        // อัปเดต stats เรียลไทม์ (FAR จะเปลี่ยนตามจำนวนชั้นใหม่)
+        this.updateRealtimeStats(graphicToUpdate);
       },
       error: (err) => {
         console.error("เกิดข้อผิดพลาดในการลบชั้น:", err);
@@ -223,6 +236,67 @@ export class App implements OnInit {
     this.updateSketchSymbol();
     // สั่งให้เริ่มวาดสี่เหลี่ยม
     this.sketchViewModel.create("rectangle");
+  }
+
+  updateRealtimeStats(buildingGraphic: any) {
+    if (!buildingGraphic || !buildingGraphic.geometry) return;
+    
+    const buildingGeometry = buildingGraphic.geometry;
+    let matchedZone = null;
+    for (let zone of this.zonesData) {
+        if (!zone.geometry || !zone.geometry.rings) continue;
+        const zonePolygon = new Polygon({
+            rings: zone.geometry.rings,
+            spatialReference: zone.geometry.spatialReference
+        });
+        if (geometryEngine.within(buildingGeometry, zonePolygon)) {
+            matchedZone = zone;
+            break;
+        }
+    }
+
+    let matchedParcel = null;
+    for (let parcel of this.parcelsData) {
+        if (!parcel.geometry || !parcel.geometry.rings) continue;
+        const parcelPolygon = new Polygon({
+            rings: parcel.geometry.rings,
+            spatialReference: parcel.geometry.spatialReference || { wkid: 3857 }
+        });
+        if (geometryEngine.within(buildingGeometry, parcelPolygon)) {
+            matchedParcel = parcel;
+            break;
+        }
+    }
+
+    if (matchedZone && matchedParcel) {
+        const coverageMax = matchedZone.zoneType?.attributes?.CoverageMax || 0;
+        const farMax = matchedZone.zoneType?.attributes?.FARMax || 0;
+        const heightMax = matchedZone.zoneType?.attributes?.HeightMax || 0;
+        const spaceUse = Math.round(geometryEngine.geodesicArea(buildingGeometry, "square-meters"));
+        const spaceAllow = Math.round(matchedParcel.attributes?.Area * coverageMax);
+        
+        let currentCoverage = 0;
+        if (spaceAllow > 0) {
+            currentCoverage = Math.round((spaceUse / spaceAllow) * (coverageMax * 100));
+        }
+        
+        const numFloors = this.activeSpacesSignal().length > 0 ? this.activeSpacesSignal().length : 1;
+        const currentFar = (currentCoverage / 100) * numFloors;
+
+        this.currentFAR = currentFar;
+        this.maxFAR = farMax;
+        this.currentCoverage = currentCoverage;
+        this.maxCoverage = coverageMax * 100;
+        this.maxHeight = heightMax;
+        this.cdr.detectChanges();
+    } else {
+        this.currentFAR = 0;
+        this.maxFAR = 0;
+        this.currentCoverage = 0;
+        this.maxCoverage = 0;
+        this.maxHeight = 0;
+        this.cdr.detectChanges();
+    }
   }
 
   clearGraphics() {
@@ -596,11 +670,17 @@ export class App implements OnInit {
 
     // ดักจับ Event เมื่อวาดเสร็จ
     this.sketchViewModel.on("create", (event) => {
+      // คำนวณ stats เรียลไทม์ ตอนกำลังกางขนาดตึก
+      if (event.state === "active" && event.graphic) {
+        this.updateRealtimeStats(event.graphic);
+      }
+
       if (event.state === "complete") {
         let polygon: any;
         if (event.graphic){
           polygon = event.graphic.geometry as any;
           this.activeGraphic = event.graphic; // เก็บตึกที่เพิ่งวาดเสร็จไว้
+          this.updateRealtimeStats(event.graphic);
         }
         this.isDrawingComplete = true; // โชว์ปุ่มยืนยัน
         this.cdr.detectChanges();
@@ -611,6 +691,11 @@ export class App implements OnInit {
     });
 
     this.sketchViewModel.on("update", (event) => {
+      // คำนวณ stats เรียลไทม์ ตอนกำลังลากแก้ไขตึก
+      if (event.state === "active" && event.graphics.length > 0) {
+        this.updateRealtimeStats(event.graphics[0]);
+      }
+
       // เมื่อคลิกเลือกตึก (ดึงค่าความสูงมาแสดงแค่ตอน start เท่านั้น)
       if (event.state === "start") {
         if (event.graphics.length > 0) {
@@ -634,7 +719,6 @@ export class App implements OnInit {
           } else {
               this.originalHeight = this.DEFAULT_HEIGHT;
           }
-          this.cdr.detectChanges();
 
           // เก็บ GlobalID ของ spaces ไว้ใช้ตอนยิง updateMutation
           const attrs = this.activeGraphic.attributes;
@@ -645,6 +729,10 @@ export class App implements OnInit {
           this.activeSpacesSignal.set(activeSpacesData); // อัปเดต signal
           console.log("=== ข้อมูล Space ของตึกที่ถูกเลือก ===");
           console.log(this.activeSpacesSignal());
+
+          // คำนวณ stats ทันทีตอนเลือกตึก
+          this.updateRealtimeStats(this.activeGraphic);
+          this.cdr.detectChanges();
         }
       }
 
@@ -656,6 +744,12 @@ export class App implements OnInit {
         this.activeSpacesSignal.set([]); // รีเซ็ต signal ให้ว่าง
         this.buildingHeight = this.DEFAULT_HEIGHT;
         this.updateSketchSymbol();
+        // รีเซ็ตค่า stats
+        this.currentFAR = 0;
+        this.maxFAR = 0;
+        this.currentCoverage = 0;
+        this.maxCoverage = 0;
+        this.maxHeight = 0;
         this.cdr.detectChanges();
 
         if (event.graphics.length > 0) {

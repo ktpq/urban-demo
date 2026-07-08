@@ -29,8 +29,20 @@
         <!-- ข้อความแสดงข้อมูลเมื่อแก้ไขตึกเดิม -->
         <div class="flex flex-col gap-1 mt-2 p-3 bg-blue-50 rounded border border-blue-200" *ngIf="isBoxSelected">
             <p class="text-sm font-semibold text-blue-800 border-b border-blue-200 pb-1 mb-1">📊 ข้อมูลตึกปัจจุบัน</p>
-            <p class="text-xs text-blue-900"><b>ความสูงรวม:</b> {{ buildingHeight }} เมตร</p>
+            <p class="text-xs text-blue-900"><b>ความสูงรวม:</b> {{ buildingHeight }} เมตร<span *ngIf="maxHeight > 0" class="text-gray-500"> / สูงสุด {{ maxHeight }} ม.</span></p>
             <p class="text-xs text-blue-900"><b>จำนวนชั้น:</b> {{ activeSpacesSignal().length > 0 ? activeSpacesSignal().length : 1 }} ชั้น</p>
+            <div *ngIf="maxCoverage > 0" class="flex justify-between text-xs text-blue-900 mt-1">
+                <span><b>Coverage:</b> {{ currentCoverage }}% / {{ maxCoverage }}%</span>
+                <span [class]="currentCoverage >= maxCoverage ? 'text-red-600 font-bold' : 'text-green-600 font-bold'">
+                    {{ currentCoverage >= maxCoverage ? '⚠ เกิน!' : '✓ ผ่าน' }}
+                </span>
+            </div>
+            <div *ngIf="maxFAR > 0" class="flex justify-between text-xs text-blue-900 mt-1">
+                <span><b>FAR:</b> {{ currentFAR.toFixed(2) }} / {{ maxFAR }}</span>
+                <span [class]="currentFAR > maxFAR ? 'text-red-600 font-bold' : 'text-green-600 font-bold'">
+                    {{ currentFAR > maxFAR ? '⚠ เกิน!' : '✓ ผ่าน' }}
+                </span>
+            </div>
         </div>
 
         <button *ngIf="isDrawingComplete"
