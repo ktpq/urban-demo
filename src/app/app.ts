@@ -39,6 +39,7 @@ export class App implements OnInit {
   // สำหรับจดจำค่าก่อนทำการอัปเดต เพื่อย้อนกลับเมื่อผิดเงื่อนไข
   originalGeometry: any = null;
   originalHeight: number = 30;
+  isBestBuildingGenerated: boolean = false;
 
   // ตัวแปรสำหรับโชว์ข้อมูล FAR/Coverage/Height แบบเรียลไทม์
   currentFAR: number = 0;
@@ -100,13 +101,25 @@ export class App implements OnInit {
     // defined varialbles
     const graphicToUpdate = this.activeGraphic;
     const attr = this.activeSpacesSignal().at(-1).attributes;
-    const geometry = this.activeSpacesSignal().at(-1).geometry;
-    console.log("active graphic eiei", this.activeGraphic)
     const floorHeight = attr.FloorHeight;
     const floorNumber = attr.FloorNumber + 1;
     
-    const rings3D = geometry.rings.map((ring: any[]) => 
-      ring.map((pt: any[]) => pt.length === 3 ? [pt[0], pt[1], pt[2]+floorHeight] : pt)
+    // หา baseZ ของตึกนี้
+    const firstSpace = this.activeSpacesSignal()[0];
+    const firstSpaceRings = firstSpace?.geometry?.rings;
+    let baseZ = (firstSpaceRings && firstSpaceRings[0] && firstSpaceRings[0][0] && firstSpaceRings[0][0].length >= 3)
+      ? firstSpaceRings[0][0][2]
+      : 10;
+    if (baseZ < 10) baseZ = 10;
+    
+    // คำนวณความสูง Z ของชั้นใหม่
+    const numFloors = this.activeSpacesSignal().length;
+    const newZ = baseZ + (numFloors * floorHeight);
+    
+    // ใช้รูปทรงปัจจุบันของ graphic เผื่อผู้ใช้ดึงแก้ทรงไปแล้ว
+    const baseRings = graphicToUpdate.geometry.rings;
+    const rings3D = baseRings.map((ring: any[]) => 
+      ring.map((pt: any[]) => [pt[0], pt[1], newZ])
     );
 
     // จำลองค่าจำนวนชั้นและความสูงใหม่ที่จะเกิดขึ้น เพื่อส่งไปเช็ค Regulation ก่อน
@@ -404,7 +417,7 @@ export class App implements OnInit {
         
         // check regulation coverage
         
-        if (currentCoverage >= maxCoverage) {
+        if (currentCoverage > maxCoverage) {
           return {
             status: "error",
             message: `Coverage ${currentCoverage} มากเกินไป กรุณาลดขนาดตึก ให้ไม่เกิน ${maxCoverage} !`
@@ -523,14 +536,22 @@ export class App implements OnInit {
       } else {
         alert(this.checkZoneRegulation()!.message)
 
-        // ยิง Mutation เพื่ออัปเดตตึกในฐานข้อมูล
-        this.updateMutationBuilding();
+        if (this.isBestBuildingGenerated) {
+           if (this.activeSpaceGlobalIDs && this.activeSpaceGlobalIDs.length > 0) {
+              this.deleteMutationBuilding(this.activeSpaceGlobalIDs);
+           }
+           this.createMultipleSpacesMutation();
+        } else {
+           // ยิง Mutation เพื่ออัปเดตตึกในฐานข้อมูล
+           this.updateMutationBuilding();
+        }
 
         // reset สถานะกลับคืน
         this.isDrawingComplete = false;
         this.activeGraphic = null;
         this.activeSpaceGlobalIDs = [];
         this.buildingHeight = this.DEFAULT_HEIGHT;
+        this.isBestBuildingGenerated = false;
         this.updateSketchSymbol();
       }
     }
@@ -551,9 +572,9 @@ export class App implements OnInit {
     const graphicToUpdate = this.activeGraphic; // จำกราฟิกตัวนี้ไว้ก่อน
     const polygon = graphicToUpdate.geometry as any;
 
-    // แปลง 2D ให้กลายเป็น 3D (เติม 0 ต่อท้าย) เพื่อป้องกัน Error: z value is required
+    // แปลง 2D ให้กลายเป็น 3D (เติม 10 ต่อท้าย) เพื่อป้องกัน Error: z value is required
     const rings3D = polygon.rings.map((ring: any[]) => 
-      ring.map((pt: any[]) => pt.length === 3 ? [pt[0], pt[1], 10] : pt)
+      ring.map((pt: any[]) => [pt[0], pt[1], 10])
     );
 
 
@@ -592,9 +613,10 @@ export class App implements OnInit {
     
     // หา baseZ (ความสูงที่ฐานของชั้นล่างสุด)
     const firstSpaceOrigRings = sortedSpaces[0].geometry?.rings;
-    const baseZ = (firstSpaceOrigRings && firstSpaceOrigRings[0] && firstSpaceOrigRings[0][0] && firstSpaceOrigRings[0][0].length >= 3) 
+    let baseZ = (firstSpaceOrigRings && firstSpaceOrigRings[0] && firstSpaceOrigRings[0][0] && firstSpaceOrigRings[0][0].length >= 3) 
                     ? firstSpaceOrigRings[0][0][2] 
-                    : 0;
+                    : 10;
+    if (baseZ < 10) baseZ = 10;
 
     const updateSpacesData = sortedSpaces.map((space: any, index: number) => {
       const gid = space.attributes.GlobalID;
@@ -642,6 +664,158 @@ export class App implements OnInit {
       },
       error: (err) => {
         console.error("เกิดข้อผิดพลาดในการลบตึก:", err);
+      }
+    });
+  }
+
+  generateBestBuilding() {
+    if (!this.activeGraphic) return;
+    
+    const buildingGeometry = this.activeGraphic.geometry;
+    let matchedParcel = null;
+    for (let parcel of this.parcelsData) {
+        if (!parcel.geometry || !parcel.geometry.rings) continue;
+        const parcelPolygon = new Polygon({
+            rings: parcel.geometry.rings,
+            spatialReference: parcel.geometry.spatialReference || { wkid: 3857 }
+        });
+        if (geometryEngine.within(buildingGeometry, parcelPolygon)) {
+            matchedParcel = parcel;
+            break;
+        }
+    }
+    
+    let matchedZone = null;
+    for (let zone of this.zonesData) {
+        if (!zone.geometry || !zone.geometry.rings) continue;
+        const zonePolygon = new Polygon({
+            rings: zone.geometry.rings,
+            spatialReference: zone.geometry.spatialReference
+        });
+        if (geometryEngine.within(buildingGeometry, zonePolygon)) {
+            matchedZone = zone;
+            break;
+        }
+    }
+
+    if (!matchedParcel || !matchedZone) {
+      alert("ไม่พบข้อมูลแปลงที่ดินหรือโซนที่วาดตึกไว้");
+      return;
+    }
+
+    const coverageMax = matchedZone.zoneType?.attributes?.CoverageMax || 0;
+    const farMax = matchedZone.zoneType?.attributes?.FARMax || 0;
+    const heightMax = matchedZone.zoneType?.attributes?.HeightMax || 0;
+
+    if (coverageMax === 0) {
+      alert("โซนนี้ไม่มีข้อกำหนด CoverageMax");
+      return;
+    }
+
+    // คำนวณ Scale
+    const scale = Math.sqrt(coverageMax);
+    
+    // ย่อส่วน Polygon (scale down from centroid)
+    const parcelPolygon = new Polygon({
+      rings: matchedParcel.geometry.rings,
+      spatialReference: matchedParcel.geometry.spatialReference || { wkid: 3857 }
+    });
+    
+    const centroid = parcelPolygon.extent.center;
+    const cx = centroid.x;
+    const cy = centroid.y;
+    
+    const newRings = parcelPolygon.rings.map((ring: any[]) => 
+      ring.map((pt: any[]) => [
+        cx + (pt[0] - cx) * scale,
+        cy + (pt[1] - cy) * scale,
+        10
+      ])
+    );
+    
+    const newGeometry = new Polygon({
+      rings: newRings,
+      spatialReference: parcelPolygon.spatialReference
+    });
+
+    // คำนวณความสูงและจำนวนชั้น
+    let maxFloors = Math.floor(farMax / coverageMax);
+    if (maxFloors < 1) maxFloors = 1;
+    
+    let bestHeight = maxFloors * 3; // ชั้นละ 3 เมตร
+    if (heightMax > 0 && bestHeight > heightMax) {
+       bestHeight = heightMax;
+       maxFloors = Math.floor(bestHeight / 3);
+       if (maxFloors < 1) maxFloors = 1;
+    }
+
+    // Preview: อัปเดต Graphic
+    this.activeGraphic.geometry = newGeometry;
+    this.buildingHeight = bestHeight;
+    this.activeGraphic.symbol = new PolygonSymbol3D({
+      symbolLayers: [
+        new ExtrudeSymbol3DLayer({
+          size: bestHeight,
+          material: { color: "#ffffff" }
+        })
+      ]
+    });
+
+    // Mock spacesData สำหรับให้ Preview Stats (FAR/Coverage) คำนวณได้ถูกต้อง
+    const mockSpaces = [];
+    for (let i = 0; i < maxFloors; i++) {
+       mockSpaces.push({
+         attributes: { FloorHeight: bestHeight / maxFloors, FloorNumber: i + 1 },
+         geometry: { rings: newRings } // fake geometry 
+       });
+    }
+    this.activeSpacesSignal.set(mockSpaces);
+    this.isBestBuildingGenerated = true;
+
+    // รีคำนวณ Stats 
+    this.updateRealtimeStats(this.activeGraphic);
+    alert("✨ สร้างพรีวิว Best Building แล้ว กรุณากดยืนยันการแก้ไขเพื่อบันทึก");
+  }
+
+  createMultipleSpacesMutation() {
+    if (!this.activeGraphic) return;
+
+    const spacesData = this.activeSpacesSignal();
+    const polygon = this.activeGraphic.geometry as any;
+    const baseRings = polygon.rings;
+    const numFloors = spacesData.length;
+    const floorHeight = this.buildingHeight / numFloors;
+
+    const newSpacesInputs = spacesData.map((space: any, index: number) => {
+      const newZ = 10 + (index * floorHeight);
+      const rings3D = baseRings.map((ring: any[]) => 
+        ring.map((pt: any[]) => [pt[0], pt[1], newZ])
+      );
+      
+      return {
+        geometry: {
+            rings: rings3D,
+            spatialReference: { wkid: 3857 }
+        },
+        attributes: {
+            ParcelID: this.apiService.parcelId, 
+            SpaceType: "Building",
+            SpaceUseTypeID: this.apiService.spaceUseTypeId,
+            FloorHeight: floorHeight,
+            BuildingNumber: 1,
+            FloorNumber: index + 1,
+            BranchID: this.apiService.branchId
+        }
+      };
+    });
+
+    this.apiService.createSpacesBatch(newSpacesInputs).subscribe({
+      next: (response) => {
+        console.log("=== สร้าง Best Building ลงฐานข้อมูลสำเร็จ! ===");
+        console.log(response);
+      },
+      error: (err) => {
+        console.error("เกิดข้อผิดพลาดในการสร้าง Best Building:", err);
       }
     });
   }

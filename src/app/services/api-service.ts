@@ -126,6 +126,31 @@ export class ApiService {
     return this.executeGraphQL(mutationQuery, mutationVariables);
   }
 
+  createSpacesBatch(newSpacesInputs: any[]) {
+    const mutationQuery = `
+      mutation CreateSpacesBatch($urbanDesignDatabaseId: PortalItemId!, $newSpaces: [CreateSpaceInput!]!){
+            createSpaces(urbanDatabaseId: $urbanDesignDatabaseId, spaces: $newSpaces){
+                geometry {
+                    rings
+                }
+                attributes {
+                    GlobalID
+                    BranchID
+                    CustomID
+                    FloorHeight
+                    FloorNumber
+                }
+            }
+        }
+        `;
+    const mutationVariables = {
+        urbanDesignDatabaseId: this.urbanDesignDatabaseId,
+        newSpaces: newSpacesInputs
+    };
+
+    return this.executeGraphQL(mutationQuery, mutationVariables);
+  }
+
   updateSpace(updateSpacesData: any[]) {
     const mutationQuery = `
       mutation UpdateSpace($urbanDesignDatabaseId: PortalItemId!, $updateSpaces: [UpdateSpaceInput!]!) {

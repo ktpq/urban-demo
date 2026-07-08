@@ -33,8 +33,8 @@
             <p class="text-xs text-blue-900"><b>จำนวนชั้น:</b> {{ activeSpacesSignal().length > 0 ? activeSpacesSignal().length : 1 }} ชั้น</p>
             <div *ngIf="maxCoverage > 0" class="flex justify-between text-xs text-blue-900 mt-1">
                 <span><b>Coverage:</b> {{ currentCoverage }}% / {{ maxCoverage }}%</span>
-                <span [class]="currentCoverage >= maxCoverage ? 'text-red-600 font-bold' : 'text-green-600 font-bold'">
-                    {{ currentCoverage >= maxCoverage ? '⚠ เกิน!' : '✓ ผ่าน' }}
+                <span [class]="currentCoverage > maxCoverage ? 'text-red-600 font-bold' : 'text-green-600 font-bold'">
+                    {{ currentCoverage > maxCoverage ? '⚠ เกิน!' : '✓ ผ่าน' }}
                 </span>
             </div>
             <div *ngIf="maxFAR > 0" class="flex justify-between text-xs text-blue-900 mt-1">
@@ -55,6 +55,12 @@
             class="mt-2 w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded shadow transition-colors cursor-pointer"
             (click)="confirmEdit()">
             ✏️ ยืนยันการแก้ไข (Confirm Edit)
+        </button>
+
+        <button *ngIf="isBoxSelected"
+            class="mt-2 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded shadow transition-colors cursor-pointer"
+            (click)="generateBestBuilding()">
+            ✨ สร้างตึกคุ้มที่สุด (Generate Best Building)
         </button>
 
         <div class="flex gap-2 w-full mt-2" *ngIf="isBoxSelected && activeSpacesSignal().length > 0">
