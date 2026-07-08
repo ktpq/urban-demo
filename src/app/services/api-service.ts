@@ -94,6 +94,8 @@ export class ApiService {
                     GlobalID
                     BranchID
                     CustomID
+                    FloorHeight
+                    FloorNumber
                 }
             }
         }

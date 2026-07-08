@@ -89,6 +89,16 @@ export class App implements OnInit {
     }
   }
 
+  addFloor() {
+    console.log("=== Add Floor ===");
+    console.log(this.activeSpacesSignal());
+  }
+
+  removeFloor() {
+    console.log("=== Remove Floor ===");
+    console.log(this.activeSpacesSignal());
+  }
+
   // อัปเดตสัญลักษณ์เวลาเปลี่ยนความสูง
   updateSketchSymbol() {
     if (!this.sketchViewModel) return;

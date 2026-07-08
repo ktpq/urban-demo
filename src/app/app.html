@@ -37,6 +37,17 @@
             ✏️ ยืนยันการแก้ไข (Confirm Edit)
         </button>
 
+        <div class="flex gap-2 w-full mt-2" *ngIf="isBoxSelected && activeSpacesSignal().length > 0">
+            <button class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded shadow transition-colors cursor-pointer"
+                (click)="addFloor()">
+                ➕ (Add Floor)
+            </button>
+            <button class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded shadow transition-colors cursor-pointer"
+                (click)="removeFloor()">
+                ➖ (Remove Floor)
+            </button>
+        </div>
+
         <button *ngIf="!isDrawingComplete && !isBoxSelected"
             class="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded shadow transition-colors cursor-pointer"
             (click)="startDrawing()">
