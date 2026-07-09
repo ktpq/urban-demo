@@ -536,22 +536,14 @@ export class App implements OnInit {
       } else {
         alert(this.checkZoneRegulation()!.message)
 
-        if (this.isBestBuildingGenerated) {
-           if (this.activeSpaceGlobalIDs && this.activeSpaceGlobalIDs.length > 0) {
-              this.deleteMutationBuilding(this.activeSpaceGlobalIDs);
-           }
-           this.createMultipleSpacesMutation();
-        } else {
-           // ยิง Mutation เพื่ออัปเดตตึกในฐานข้อมูล
-           this.updateMutationBuilding();
-        }
+        // ยิง Mutation เพื่ออัปเดตตึกในฐานข้อมูล
+        this.updateMutationBuilding();
 
         // reset สถานะกลับคืน
         this.isDrawingComplete = false;
         this.activeGraphic = null;
         this.activeSpaceGlobalIDs = [];
         this.buildingHeight = this.DEFAULT_HEIGHT;
-        this.isBestBuildingGenerated = false;
         this.updateSketchSymbol();
       }
     }
@@ -721,7 +713,7 @@ export class App implements OnInit {
       spatialReference: matchedParcel.geometry.spatialReference || { wkid: 3857 }
     });
     
-    const centroid = parcelPolygon.extent.center;
+    const centroid = parcelPolygon.extent!.center;
     const cx = centroid.x;
     const cy = centroid.y;
     
@@ -733,13 +725,17 @@ export class App implements OnInit {
       ])
     );
     
+    // polygon ที่เป็น best building
     const newGeometry = new Polygon({
       rings: newRings,
+      hasZ: true,
       spatialReference: parcelPolygon.spatialReference
     });
 
     // คำนวณความสูงและจำนวนชั้น
     let maxFloors = Math.floor(farMax / coverageMax);
+    // console.log("maxFloors", maxFloors);
+    // console.log(farMax, coverageMax);
     if (maxFloors < 1) maxFloors = 1;
     
     let bestHeight = maxFloors * 3; // ชั้นละ 3 เมตร
@@ -749,7 +745,7 @@ export class App implements OnInit {
        if (maxFloors < 1) maxFloors = 1;
     }
 
-    // Preview: อัปเดต Graphic
+    // Preview: อัปเดต Graphic (Local Map)
     this.activeGraphic.geometry = newGeometry;
     this.buildingHeight = bestHeight;
     this.activeGraphic.symbol = new PolygonSymbol3D({
@@ -769,12 +765,30 @@ export class App implements OnInit {
          geometry: { rings: newRings } // fake geometry 
        });
     }
+
+    console.log("building อันเก่า",this.activeSpacesSignal());
+
+    
+    // ลบอันเก่าตรงนี้
+    const oldSpaceId = this.activeSpacesSignal()[0].attributes.GlobalID
+    this.apiService.deleteSpace([oldSpaceId]).subscribe({
+      next: (response) => {
+        console.log("ลบอันเก่าสําเร็จ", response);
+      },
+      error: (error) => {
+        console.error("ลบอันเก่าไม่สําเร็จ", error);
+      }
+    })
+
     this.activeSpacesSignal.set(mockSpaces);
     this.isBestBuildingGenerated = true;
 
-    // รีคำนวณ Stats 
+    // รีคำนวณ Stats ทันที
     this.updateRealtimeStats(this.activeGraphic);
-    alert("✨ สร้างพรีวิว Best Building แล้ว กรุณากดยืนยันการแก้ไขเพื่อบันทึก");
+    console.log("space ของตึกใหม่", this.activeSpacesSignal());
+    
+    
+      
   }
 
   createMultipleSpacesMutation() {
