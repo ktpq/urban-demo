@@ -30,6 +30,10 @@ export class App implements OnInit {
   mapComponent!: ArcgisMap;
   sceneComponent!: ArcgisScene;
 
+  branchId: string = "9dfb4d30-aa28-4c36-bc9f-c8409ff4cb30";
+  parcelId: string = "753027a8-97d0-444a-9642-0e378866f2d7";
+  spaceUseTypeId: string = "15585cae-fec0-4050-8ecc-dd2f6619d5a6";
+
   readonly DEFAULT_HEIGHT = 30;
   buildingHeight: number = 30;
   isBoxSelected: boolean = false;
@@ -761,7 +765,7 @@ export class App implements OnInit {
     const mockSpaces = [];
     for (let i = 0; i < maxFloors; i++) {
        mockSpaces.push({
-         attributes: { FloorHeight: bestHeight / maxFloors, FloorNumber: i + 1 },
+         attributes: { FloorHeight: bestHeight / maxFloors, FloorNumber: i },
          geometry: { rings: newRings } // fake geometry 
        });
     }
@@ -786,6 +790,48 @@ export class App implements OnInit {
     // รีคำนวณ Stats ทันที
     this.updateRealtimeStats(this.activeGraphic);
     console.log("space ของตึกใหม่", this.activeSpacesSignal());
+
+    const allNewSpace:any[] = [];
+    const spaces = this.activeSpacesSignal();
+    
+    spaces.forEach((space: any) => {
+      // console.log(space);
+      const floorHeight = space.attributes.FloorHeight;
+      const floorNumber = space.attributes.FloorNumber;
+
+      const baseRings = space.geometry.rings;
+      const formatRing = baseRings.map((ring: any[]) => 
+        ring.map((pt: any[]) => [pt[0], pt[1], 10+(floorHeight*floorNumber)])
+      );
+      // console.log("Format Rings: ", formatRing)
+      allNewSpace.push({
+          geometry: {
+              rings: formatRing,
+              spatialReference: {
+                  wkid: 3857
+              }
+          },
+          attributes: {
+              ParcelID: this.parcelId,
+              SpaceType: "Building",
+              SpaceUseTypeID: this.spaceUseTypeId,
+              FloorHeight: floorHeight,
+              BuildingNumber: 1,
+              FloorNumber: floorNumber,
+              BranchID: this.branchId
+          }
+      })
+    })
+    
+    this.apiService.createSpacesBatch(allNewSpace).subscribe({
+      next: (response) => {
+        console.log("=== สร้าง Best Building ลงฐานข้อมูลสำเร็จ! ===");
+        console.log(response);
+      },
+      error: (err) => {
+        console.error("เกิดข้อผิดพลาดในการสร้าง Best Building:", err);
+      }
+    });
     
     
       
@@ -817,7 +863,7 @@ export class App implements OnInit {
             SpaceUseTypeID: this.apiService.spaceUseTypeId,
             FloorHeight: floorHeight,
             BuildingNumber: 1,
-            FloorNumber: index + 1,
+            FloorNumber: index,
             BranchID: this.apiService.branchId
         }
       };

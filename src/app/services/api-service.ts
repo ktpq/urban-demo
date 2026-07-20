@@ -103,7 +103,7 @@ export class ApiService {
     const mutationVariables = {
         urbanDesignDatabaseId: this.urbanDesignDatabaseId,
         newSpace: [
-            {
+            { 
                 geometry: {
                     rings: rings3D,
                     spatialReference: {
@@ -119,12 +119,14 @@ export class ApiService {
                     FloorNumber: floorNumber,
                     BranchID: this.branchId
                 }
-            }
+              }
             ]
         };
 
     return this.executeGraphQL(mutationQuery, mutationVariables);
   }
+
+ 
 
   createSpacesBatch(newSpacesInputs: any[]) {
     const mutationQuery = `
