@@ -1,93 +1,152 @@
-<main class="w-screen h-screen flex flex-col md:flex-row overflow-hidden">
+<main class="map-container">
     <arcgis-scene
         basemap="topo-vector"
         camera-position="100.78547918479006, 12.918, 500"
         camera-tilt="60"
         camera-heading="0"
         (arcgisViewReadyChange)="onSceneReady($event)"
-        class="block w-full flex-1 h-full min-h-[50vh] relative">
+        class="scene-view">
         <arcgis-zoom slot="top-left"></arcgis-zoom>
         <arcgis-navigation-toggle slot="top-left"></arcgis-navigation-toggle>
         <arcgis-compass slot="top-left"></arcgis-compass>
     </arcgis-scene>
 
-    <section class="w-full md:w-[350px] h-full bg-white shadow-lg p-6 overflow-y-auto flex-shrink-0 z-10 flex flex-col gap-4">
-        <h2 class="text-xl font-bold text-gray-800">3D Building Editor</h2>
-        <p class="text-sm text-gray-600 leading-relaxed">กำหนดความสูงที่ต้องการ กดปุ่มวาดตึก แล้ว <b>"คลิกลาก"</b> บนแผนที่เพื่อกางขนาดฐานตึก</p>
-        
-        <!-- Input สำหรับสร้างตึกใหม่ -->
-        <div class="flex flex-col gap-2 mt-2" *ngIf="isDrawingComplete && !isBoxSelected">
-            <label class="text-sm font-semibold text-gray-700">ความสูงตึกเริ่มต้น (เมตร):</label>
-            <input 
-                type="number" 
-                class="border border-gray-300 rounded p-2 focus:border-blue-500 focus:outline-none" 
-                [value]="buildingHeight" 
-                (input)="updateHeight($event)"
-                min="1" max="1000" />
+    <!-- Floating Sidebar Panel (Google Maps style) -->
+    <section class="sidebar-panel" id="sidebar-panel">
+        <!-- Header -->
+        <div class="panel-header">
+            <div class="header-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+                    <line x1="9" y1="6" x2="9" y2="10"></line>
+                    <line x1="15" y1="6" x2="15" y2="10"></line>
+                    <line x1="9" y1="14" x2="9" y2="18"></line>
+                    <line x1="15" y1="14" x2="15" y2="18"></line>
+                </svg>
+            </div>
+            <div>
+                <h1 class="panel-title">3D Building Editor</h1>
+                <p class="panel-subtitle">Urban Design Tool</p>
+            </div>
         </div>
 
-        <!-- ข้อความแสดงข้อมูลเมื่อแก้ไขตึกเดิม -->
-        <div class="flex flex-col gap-1 mt-2 p-3 bg-blue-50 rounded border border-blue-200" *ngIf="isBoxSelected">
-            <p class="text-sm font-semibold text-blue-800 border-b border-blue-200 pb-1 mb-1">📊 ข้อมูลตึกปัจจุบัน</p>
-            <p class="text-xs text-blue-900"><b>ความสูงรวม:</b> {{ buildingHeight }} เมตร<span *ngIf="maxHeight > 0" class="text-gray-500"> / สูงสุด {{ maxHeight }} ม.</span></p>
-            <p class="text-xs text-blue-900"><b>จำนวนชั้น:</b> {{ activeSpacesSignal().length > 0 ? activeSpacesSignal().length : 1 }} ชั้น</p>
-            <div *ngIf="maxCoverage > 0" class="flex justify-between text-xs text-blue-900 mt-1">
-                <span><b>Coverage:</b> {{ currentCoverage }}% / {{ maxCoverage }}%</span>
-                <span [class]="currentCoverage > maxCoverage ? 'text-red-600 font-bold' : 'text-green-600 font-bold'">
+        <!-- Instruction Card -->
+        <div class="info-card" *ngIf="!isDrawingComplete && !isBoxSelected">
+            <div class="info-icon">💡</div>
+            <p class="info-text">กำหนดความสูงที่ต้องการ กดปุ่มวาดตึก แล้ว <b>"คลิกลาก"</b> บนแผนที่เพื่อกางขนาดฐานตึก</p>
+        </div>
+
+        <!-- Input สำหรับสร้างตึกใหม่ -->
+        <div class="input-group" *ngIf="isDrawingComplete && !isBoxSelected">
+            <label class="input-label">ความสูงชั้นแรก (เมตร)</label>
+            <input 
+                type="number" 
+                class="input-field" 
+                [value]="buildingHeight" 
+                (input)="updateHeight($event)"
+                min="1" max="1000" 
+                id="building-height-input" />
+        </div>
+
+        <!-- ข้อมูลตึกปัจจุบัน -->
+        <div class="stats-card" *ngIf="isBoxSelected">
+            <div class="stats-header">
+                <span class="stats-header-icon">📊</span>
+                <span class="stats-header-text">ข้อมูลตึกปัจจุบัน</span>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-label">ความสูงรวม</span>
+                    <span class="stat-value">{{ buildingHeight }} <small>ม.</small></span>
+                    <span class="stat-sub" *ngIf="maxHeight > 0">สูงสุด {{ maxHeight }} ม.</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">จำนวนชั้น</span>
+                    <span class="stat-value">{{ activeSpacesSignal().length > 0 ? activeSpacesSignal().length : 1 }}</span>
+                    <span class="stat-sub">ชั้น</span>
+                </div>
+            </div>
+
+            <!-- Coverage -->
+            <div class="regulation-row" *ngIf="maxCoverage > 0">
+                <div class="regulation-info">
+                    <span class="regulation-label">Coverage</span>
+                    <span class="regulation-values">{{ currentCoverage }}% / {{ maxCoverage }}%</span>
+                </div>
+                <div class="progress-bar-track">
+                    <div class="progress-bar-fill" 
+                         [style.width.%]="(currentCoverage / maxCoverage) * 100 > 100 ? 100 : (currentCoverage / maxCoverage) * 100"
+                         [class.over-limit]="currentCoverage > maxCoverage">
+                    </div>
+                </div>
+                <span class="regulation-badge" [class.badge-pass]="currentCoverage <= maxCoverage" [class.badge-fail]="currentCoverage > maxCoverage">
                     {{ currentCoverage > maxCoverage ? '⚠ เกิน!' : '✓ ผ่าน' }}
                 </span>
             </div>
-            <div *ngIf="maxFAR > 0" class="flex justify-between text-xs text-blue-900 mt-1">
-                <span><b>FAR:</b> {{ currentFAR.toFixed(2) }} / {{ maxFAR }}</span>
-                <span [class]="currentFAR > maxFAR ? 'text-red-600 font-bold' : 'text-green-600 font-bold'">
+
+            <!-- FAR -->
+            <div class="regulation-row" *ngIf="maxFAR > 0">
+                <div class="regulation-info">
+                    <span class="regulation-label">FAR</span>
+                    <span class="regulation-values">{{ currentFAR.toFixed(2) }} / {{ maxFAR }}</span>
+                </div>
+                <div class="progress-bar-track">
+                    <div class="progress-bar-fill" 
+                         [style.width.%]="(currentFAR / maxFAR) * 100 > 100 ? 100 : (currentFAR / maxFAR) * 100"
+                         [class.over-limit]="currentFAR > maxFAR">
+                    </div>
+                </div>
+                <span class="regulation-badge" [class.badge-pass]="currentFAR <= maxFAR" [class.badge-fail]="currentFAR > maxFAR">
                     {{ currentFAR > maxFAR ? '⚠ เกิน!' : '✓ ผ่าน' }}
                 </span>
             </div>
         </div>
 
-        <button *ngIf="isDrawingComplete"
-            class="mt-2 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded shadow transition-colors cursor-pointer"
-            (click)="confirmBuilding()">
-            ✅ ยืนยันการสร้าง (Confirm Building)
-        </button>
-
-        <button *ngIf="isBoxSelected"
-            class="mt-2 w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded shadow transition-colors cursor-pointer"
-            (click)="confirmEdit()">
-            ✏️ ยืนยันการแก้ไข (Confirm Edit)
-        </button>
-
-        <button *ngIf="isBoxSelected"
-            class="mt-2 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded shadow transition-colors cursor-pointer"
-            (click)="generateBestBuilding()">
-            ✨ สร้างตึกคุ้มที่สุด (Generate Best Building)
-        </button>
-
-        <div class="flex gap-2 w-full mt-2" *ngIf="isBoxSelected && activeSpacesSignal().length > 0">
-            <button class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded shadow transition-colors cursor-pointer"
-                (click)="addFloor()">
-                ➕ (Add Floor)
+        <!-- Action Buttons -->
+        <div class="actions-group">
+            <button *ngIf="!isDrawingComplete && !isBoxSelected"
+                class="btn btn-primary"
+                (click)="startDrawing()"
+                id="draw-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                วาดตึกสี่เหลี่ยม
             </button>
-            <button class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded shadow transition-colors cursor-pointer"
-                (click)="removeFloor()">
-                ➖ (Remove Floor)
+
+            <button *ngIf="isDrawingComplete"
+                class="btn btn-success"
+                (click)="confirmBuilding()"
+                id="confirm-building-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                ยืนยันการสร้าง
             </button>
-        </div>
 
-        <button *ngIf="!isDrawingComplete && !isBoxSelected"
-            class="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded shadow transition-colors cursor-pointer"
-            (click)="startDrawing()">
-            ➕ วาดตึกสี่เหลี่ยม (Draw Rectangle)
-        </button>
-        
-        <!-- <div class="p-3 mt-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800 leading-relaxed">
-            <strong>💡 แก้ไขทีละมุม (Reshape):</strong> 
-            คลิกที่ตึกที่เคยวาดไปแล้ว จะมีจุด (Handle) โผล่ที่มุม ให้คุณสามารถจับดึงเพื่อเบี้ยวรูปทรงตึกได้อิสระ!
-        </div>
+            <button *ngIf="isBoxSelected"
+                class="btn btn-confirm"
+                (click)="confirmEdit()"
+                id="confirm-edit-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                ยืนยันการแก้ไข
+            </button>
 
-        <div class="mt-4 p-4 bg-gray-100 rounded border border-gray-200">
-            <p class="text-xs text-gray-500 font-mono mb-2"><b>สถานะล่าสุด:</b> ดูพิกัด Rings สำหรับ Urban API ได้ที่ <code>console.log</code></p>
-            <button class="w-full mt-2 text-xs text-red-500 underline cursor-pointer hover:text-red-700 text-left" (click)="clearGraphics()">ล้างตึกทั้งหมด (Clear All)</button>
-        </div> -->
+            <button *ngIf="isBoxSelected"
+                class="btn btn-generate"
+                (click)="generateBestBuilding()"
+                id="generate-best-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                สร้างตึกคุ้มที่สุด
+            </button>
+
+            <div class="floor-buttons" *ngIf="isBoxSelected && activeSpacesSignal().length > 0">
+                <button class="btn btn-floor btn-add-floor" (click)="addFloor()" id="add-floor-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    เพิ่มชั้น
+                </button>
+                <button class="btn btn-floor btn-remove-floor" (click)="removeFloor()" id="remove-floor-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    ลดชั้น
+                </button>
+            </div>
+        </div>
     </section>
 </main>
