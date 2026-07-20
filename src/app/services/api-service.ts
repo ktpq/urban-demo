@@ -9,10 +9,10 @@ import { environment } from '../../environments/environment.development';
 })
 export class ApiService {
 
-  urbanDesignDatabaseId:string = "057f8a4e29d94c8188f1eb4e08190931";
-  branchId: string = "9dfb4d30-aa28-4c36-bc9f-c8409ff4cb30";
-  parcelId: string = "753027a8-97d0-444a-9642-0e378866f2d7";
-  spaceUseTypeId: string = "15585cae-fec0-4050-8ecc-dd2f6619d5a6";
+  urbanDesignDatabaseId:string = environment.urbanDesignDatabaseId;
+  branchId: string = environment.branchId;
+  parcelId: string = environment.parcelId;
+  spaceUseTypeId: string = environment.spaceUseTypeId;
 
   constructor(private http: HttpClient) {}
 

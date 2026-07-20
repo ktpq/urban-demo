@@ -18,6 +18,7 @@ import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import PolygonSymbol3D from '@arcgis/core/symbols/PolygonSymbol3D';
 import ExtrudeSymbol3DLayer from '@arcgis/core/symbols/ExtrudeSymbol3DLayer';
 import SketchViewModel from '@arcgis/core/widgets/Sketch/SketchViewModel';
+import { environment } from '../environments/environment.development';
 
 @Component({
   selector: 'app-root',
@@ -30,9 +31,9 @@ export class App implements OnInit {
   mapComponent!: ArcgisMap;
   sceneComponent!: ArcgisScene;
 
-  branchId: string = "9dfb4d30-aa28-4c36-bc9f-c8409ff4cb30";
-  parcelId: string = "753027a8-97d0-444a-9642-0e378866f2d7";
-  spaceUseTypeId: string = "15585cae-fec0-4050-8ecc-dd2f6619d5a6";
+  branchId: string = environment.branchId;
+  parcelId: string = environment.parcelId;
+  spaceUseTypeId: string = environment.spaceUseTypeId;
 
   readonly DEFAULT_HEIGHT = 30;
   buildingHeight: number = 30;
