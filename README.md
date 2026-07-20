@@ -1,59 +1,68 @@
-# UrbanDemo
+# Urban Demo
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.6.
+## รายละเอียดโปรเจกต์
 
-## Development server
+**Urban Demo** เป็นเว็บแอปพลิเคชันสาธิตที่พัฒนาขึ้นโดยประยุกต์ใช้ **ArcGIS Urban API**
 
-To start a local development server, run:
+วัตถุประสงค์หลักของโปรเจกต์นี้คือ:
+- ศึกษาและทดสอบข้อจำกัดของ ArcGIS Urban API
+- ลดความซับซ้อนของหน้าต่างการทำงาน แทนการเข้าใช้งานผ่านหน้าเว็บไซต์หลักโดยตรง
+- ให้ผู้ใช้งานทั่วไปสามารถเข้าถึงและใช้งานระบบได้อย่างสะดวก ไม่ซับซ้อนจนเกินไป
 
-```bash
-ng serve
-```
+---
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## ภาพตัวอย่างการทำงาน
 
-## Code scaffolding
+<!-- เว้นพื้นที่สำหรับแทรกรูปภาพ -->
+<img width="1898" height="983" alt="image" src="https://github.com/user-attachments/assets/ced05b47-0251-4c1d-9bab-cc9dde483769" />
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
 
-```bash
-ng generate component component-name
-```
+---
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## ขั้นตอนการติดตั้งและการตั้งค่าระบบ
 
-```bash
-ng generate --help
-```
+คำแนะนำด้านล่างนี้สำหรับขั้นตอนการเตรียมความพร้อมและการเรียกใช้งานโปรเจกต์บนเครื่องคอมพิวเตอร์ของคุณ
 
-## Building
+### 1️⃣ การติดตั้ง (Installation)
 
-To build the project run:
+เปิด Command Line หรือ Terminal แล้ว clone โปรเจกต์ (Private Repository):
 
 ```bash
-ng build
+git clone https://github.com/ktpq/urban-demo
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+จากนั้นเข้าไปยังโฟลเดอร์ของโปรเจกต์ และติดตั้งแพ็กเกจ/ไลบรารีที่จำเป็นทั้งหมด:
 
 ```bash
-ng test
+npm install
 ```
 
-## Running end-to-end tests
+---
 
-For end-to-end (e2e) testing, run:
+### 2️⃣ เปลี่ยน API Key เป็นอันล่าสุด
+
+> ⚠️ **หมายเหตุ:** API Key จะหมดอายุทุก 2 ชั่วโมง กรุณาอัปเดตให้เป็นค่าล่าสุดก่อนใช้งาน
+
+<img width="515" height="399" alt="image" src="https://github.com/user-attachments/assets/7c58f7d2-a208-4406-8cd0-1ce169ad25d8" />
+
+<img width="1590" height="208" alt="image" src="https://github.com/user-attachments/assets/0f91ffc7-f641-4e58-902a-366a8d3f4c37" />
+
+<img width="1690" height="425" alt="image" src="https://github.com/user-attachments/assets/c1310216-1c62-4bd4-8697-43df51717aa1" />
+
+<img width="1259" height="492" alt="image" src="https://github.com/user-attachments/assets/57333dd6-71c2-44d0-b79c-f1ab8f5502ea" />
+
+นำ API Key ที่ได้ไปใส่แทนตัวเก่าในไฟล์ `environment.development.ts`:
+
+<img width="1373" height="304" alt="image" src="https://github.com/user-attachments/assets/3a654723-a9ea-4b39-a83c-a21c7b3b9ffe" />
+
+
+
+---
+
+### 3️⃣ การรัน Project
 
 ```bash
-ng e2e
+npm run start
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+---
