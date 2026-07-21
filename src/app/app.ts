@@ -45,6 +45,7 @@ export class App implements OnInit {
   originalGeometry: any = null;
   originalHeight: number = 30;
   isBestBuildingGenerated: boolean = false;
+  isFloorModified: boolean = false; // flag เช็คว่าเพิ่งกดเพิ่ม/ลดชั้นมาหรือไม่
 
   // ตัวแปรสำหรับโชว์ข้อมูล FAR/Coverage/Height แบบเรียลไทม์
   currentFAR: number = 0;
@@ -172,6 +173,9 @@ export class App implements OnInit {
 
               // อัปเดต stats เรียลไทม์ (FAR จะเปลี่ยนตามจำนวนชั้นใหม่)
               this.updateRealtimeStats(graphicToUpdate);
+
+              // ตั้งค่า flag ว่ามีการเพิ่ม/ลดชั้น
+              this.isFloorModified = true;
           }
         },
         error: (err) => {
@@ -229,6 +233,9 @@ export class App implements OnInit {
 
         // อัปเดต stats เรียลไทม์ (FAR จะเปลี่ยนตามจำนวนชั้นใหม่)
         this.updateRealtimeStats(graphicToUpdate);
+
+        // ตั้งค่า flag ว่ามีการเพิ่ม/ลดชั้น
+        this.isFloorModified = true;
       },
       error: (err) => {
         console.error("เกิดข้อผิดพลาดในการลบชั้น:", err);
@@ -556,6 +563,22 @@ export class App implements OnInit {
     // TODO: เรียก API เช็ค regulation ตรงนี้
     
     // สั่งให้ SketchViewModel ยกเลิกโหมดแก้ไข
+    if (this.sketchViewModel) {
+      this.sketchViewModel.complete();
+    }
+  }
+
+  // ฟังก์ชันใหม่สำหรับเคลียร์ค่าตอนที่กดเพิ่ม/ลดชั้นเสร็จแล้ว โดยไม่ต้องยิง API ซ้ำ
+  closeEditPanel() {
+    console.log("=== ปิดแผงแก้ไข (แค่เคลียร์ค่า) ===");
+    this.isBoxSelected = false;
+    this.isDrawingComplete = false;
+    this.activeGraphic = null;
+    this.activeSpaceGlobalIDs = [];
+    this.buildingHeight = this.DEFAULT_HEIGHT;
+    this.isFloorModified = false;
+    this.updateSketchSymbol();
+
     if (this.sketchViewModel) {
       this.sketchViewModel.complete();
     }
@@ -937,6 +960,7 @@ export class App implements OnInit {
           // ถ้ากำลังอยู่ในโหมดสร้างตึกใหม่อยู่ ไม่ต้องเปิดโหมดแก้ไขซ้อน
           if (!this.isDrawingComplete) {
             this.isBoxSelected = true;
+            this.isFloorModified = false; // รีเซ็ตสถานะเมื่อเริ่มเลือกตึกใหม่
           }
           this.activeGraphic = event.graphics[0];
 
