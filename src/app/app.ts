@@ -376,6 +376,11 @@ export class App implements OnInit {
         // ถ้าตึกวาดอยู่ในที่ดินแปลงนี้
         if (geometryEngine.within(buildingGeometry, parcelPolygon)) {
             matchedParcel = parcel;
+            // อัปเดต Parcel ID ให้ Dynamic ตามแปลงที่วาดลงไป
+            if (parcel.attributes && parcel.attributes.GlobalID) {
+                this.parcelId = parcel.attributes.GlobalID;
+                this.apiService.parcelId = parcel.attributes.GlobalID;
+            }
             break;
         }
     }
@@ -701,6 +706,11 @@ export class App implements OnInit {
         });
         if (geometryEngine.within(buildingGeometry, parcelPolygon)) {
             matchedParcel = parcel;
+            // อัปเดต Parcel ID ให้ Dynamic ตามแปลงที่วาดลงไป
+            if (parcel.attributes && parcel.attributes.GlobalID) {
+                this.parcelId = parcel.attributes.GlobalID;
+                this.apiService.parcelId = parcel.attributes.GlobalID;
+            }
             break;
         }
     }
